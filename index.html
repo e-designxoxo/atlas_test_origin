@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ATLAS - GDPR Study Workspace</title>
+    <style>
+      :root {
+        --ink: #17211f;
+        --muted: #62706b;
+        --line: #dce4df;
+        --paper: #fbfcf8;
+        --panel: #ffffff;
+        --nav: #102521;
+        --blue: #276ef1;
+        --teal: #087f7b;
+        --gold: #b97812;
+        --rose: #bd3d55;
+        --soft-blue: #eef4ff;
+        --soft-teal: #e9f7f4;
+        --soft-gold: #fff5df;
+        --shadow: 0 18px 45px rgba(19, 42, 36, 0.12);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button, input, textarea {
+        font: inherit;
+      }
+
+      .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr) 360px;
+      }
+
+      .sidebar {
+        background: var(--nav);
+        color: #effaf5;
+        padding: 22px;
+        min-height: 100vh;
+        position: sticky;
+        top: 0;
+        overflow-y: auto;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 28px;
+      }
+
+      .mark {
+        width: 42px;
+        height: 42px;
+        border: 1px solid rgba(255,255,255,0.25);
+        display: grid;
+        place-items: center;
+        background: #e8fffb;
+        color: var(--nav);
+        font-weight: 900;
+        border-radius: 8px;
+      }
+
+      .brand h1 {
+        margin: 0;
+        font-size: 20px;
+        letter-spacing: 0;
+      }
+
+      .brand p {
+        margin: 2px 0 0;
+        color: #a9c4bb;
+        font-size: 12px;
+      }
+
+      .status {
+        border: 1px solid rgba(255,255,255,0.16);
+        background: rgba(255,255,255,0.06);
+        padding: 14px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+
+      .status strong {
+        display: block;
+        font-size: 13px;
+      }
+
+      .status span {
+        display: block;
+        margin-top: 6px;
+        color: #b9d6cd;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .nav-title {
+        margin: 24px 0 10px;
+        color: #9fb7b0;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+      }
+
+      .chapter {
+        margin-bottom: 8px;
+      }
+
+      .chapter summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 10px 0;
+        color: #f8fffb;
+        font-weight: 700;
+        font-size: 14px;
+      }
+
+      .chapter summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .article-link {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 72px 1fr;
+        gap: 8px;
+        text-align: left;
+        color: #cbe0da;
+        background: transparent;
+        border: 0;
+        border-left: 2px solid transparent;
+        padding: 8px 4px 8px 10px;
+        cursor: pointer;
+      }
+
+      .article-link:hover,
+      .article-link.active {
+        color: #ffffff;
+        border-left-color: #68dfd1;
+        background: rgba(255,255,255,0.06);
+      }
+
+      .article-link span:first-child {
+        color: #87d6ca;
+        font-size: 12px;
+      }
+
+      .article-link span:last-child {
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .main {
+        min-width: 0;
+        padding: 24px 30px 40px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+
+      .document-title h2 {
+        margin: 0;
+        font-size: 22px;
+        letter-spacing: 0;
+      }
+
+      .document-title p {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .search {
+        min-width: 260px;
+        max-width: 380px;
+        flex: 1;
+        position: relative;
+      }
+
+      .search input {
+        width: 100%;
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 8px;
+        padding: 11px 12px;
+        outline: 0;
+      }
+
+      .search input:focus {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px rgba(39, 110, 241, .12);
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .metric {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 14px;
+      }
+
+      .metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 6px;
+        font-size: 22px;
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 285px;
+        gap: 18px;
+        align-items: start;
+      }
+
+      .reader,
+      .study-card,
+      .right-panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
+      .reader {
+        padding: 26px;
+        min-height: 540px;
+      }
+
+      .article-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: flex-start;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 18px;
+        margin-bottom: 22px;
+      }
+
+      .article-meta span {
+        color: var(--teal);
+        font-weight: 800;
+        font-size: 13px;
+      }
+
+      .article-meta h3 {
+        margin: 5px 0 0;
+        font-size: 30px;
+        line-height: 1.08;
+        letter-spacing: 0;
+      }
+
+      .chapter-tag {
+        color: var(--muted);
+        font-size: 12px;
+        border: 1px solid var(--line);
+        padding: 7px 9px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+
+      .article-text {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 20px;
+        line-height: 1.75;
+      }
+
+      .source-note {
+        margin-top: 24px;
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .tools {
+        display: grid;
+        gap: 14px;
+      }
+
+      .study-card {
+        padding: 16px;
+        box-shadow: none;
+      }
+
+      .study-card h4 {
+        margin: 0 0 10px;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        color: var(--muted);
+      }
+
+      .mode-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .mode {
+        border: 1px solid var(--line);
+        background: #fff;
+        padding: 9px;
+        border-radius: 8px;
+        cursor: pointer;
+        color: var(--ink);
+      }
+
+      .mode.active {
+        border-color: var(--teal);
+        background: var(--soft-teal);
+        font-weight: 800;
+      }
+
+      .explain {
+        margin: 0;
+        color: #273530;
+        line-height: 1.55;
+        font-size: 14px;
+      }
+
+      .concepts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .pill {
+        border: 1px solid var(--line);
+        background: var(--soft-blue);
+        color: #16448f;
+        border-radius: 999px;
+        padding: 7px 9px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .note-box {
+        width: 100%;
+        min-height: 115px;
+        resize: vertical;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+        outline: 0;
+      }
+
+      .note-box:focus {
+        border-color: var(--gold);
+        box-shadow: 0 0 0 3px rgba(185, 120, 18, .12);
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .icon-button {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #fff;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+      }
+
+      .icon-button:hover {
+        background: var(--soft-gold);
+      }
+
+      .right-panel {
+        min-height: 100vh;
+        border-top: 0;
+        border-bottom: 0;
+        border-right: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 24px;
+        position: sticky;
+        top: 0;
+        overflow-y: auto;
+      }
+
+      .panel-section {
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 18px;
+        margin-bottom: 18px;
+      }
+
+      .panel-section h3 {
+        margin: 0 0 12px;
+        font-size: 15px;
+      }
+
+      .concept-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 8px;
+        background: #fff;
+      }
+
+      .concept-row strong {
+        display: block;
+        font-size: 13px;
+      }
+
+      .concept-row span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .count {
+        color: var(--teal);
+        font-weight: 900;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 10px;
+      }
+
+      .timeline div {
+        display: grid;
+        grid-template-columns: 72px 1fr;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .timeline strong {
+        color: var(--ink);
+      }
+
+      .empty {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      mark {
+        background: #fff0b8;
+        padding: 0 2px;
+      }
+
+      @media (max-width: 1160px) {
+        .app {
+          grid-template-columns: 230px minmax(0, 1fr);
+        }
+
+        .right-panel {
+          display: none;
+        }
+
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .app {
+          display: block;
+        }
+
+        .sidebar {
+          position: static;
+          min-height: 0;
+        }
+
+        .main {
+          padding: 18px;
+        }
+
+        .topbar {
+          display: block;
+        }
+
+        .search {
+          margin-top: 14px;
+          max-width: none;
+        }
+
+        .metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .article-meta {
+          display: block;
+        }
+
+        .chapter-tag {
+          display: inline-block;
+          margin-top: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div>
+            <h1>ATLAS</h1>
+            <p>Legal study workspace</p>
+          </div>
+          <div class="mark">A</div>
+        </div>
+
+        <div class="status">
+          <strong>GDPR foundation corpus</strong>
+          <span>Built for international trade, business law, international law, and domestic law study workflows.</span>
+        </div>
+
+        <div class="nav-title">Document Map</div>
+        <nav id="chapterNav"></nav>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="document-title">
+            <h2 id="docTitle">Regulation (EU) 2016/679</h2>
+            <p id="docMeta">European Union · 27 April 2016 · EUR-Lex CELEX:32016R0679</p>
+          </div>
+          <label class="search">
+            <input id="searchInput" type="search" placeholder="Search articles, concepts, study prompts">
+          </label>
+        </div>
+
+        <section class="metrics" aria-label="Corpus metrics">
+          <div class="metric"><span>Seed Articles</span><strong id="articleCount">0</strong></div>
+          <div class="metric"><span>Concepts</span><strong id="conceptCount">0</strong></div>
+          <div class="metric"><span>Reading Modes</span><strong>4</strong></div>
+          <div class="metric"><span>V1 Focus</span><strong>Study</strong></div>
+        </section>
+
+        <section class="workspace">
+          <article class="reader">
+            <div class="article-meta">
+              <div>
+                <span id="articleNumber"></span>
+                <h3 id="articleTitle"></h3>
+              </div>
+              <div class="chapter-tag" id="articleChapter"></div>
+            </div>
+            <div class="article-text" id="articleText"></div>
+            <div class="source-note" id="sourceNote"></div>
+          </article>
+
+          <aside class="tools">
+            <section class="study-card">
+              <h4>Reading Mode</h4>
+              <div class="mode-grid" id="modeGrid">
+                <button class="mode active" data-mode="lawyer">Lawyer</button>
+                <button class="mode" data-mode="policy">Policy</button>
+                <button class="mode" data-mode="plain">Plain</button>
+                <button class="mode" data-mode="student">Student</button>
+              </div>
+            </section>
+
+            <section class="study-card">
+              <h4>Source-Grounded Explanation</h4>
+              <p class="explain" id="explanation"></p>
+            </section>
+
+            <section class="study-card">
+              <h4>Concepts</h4>
+              <div class="concepts" id="articleConcepts"></div>
+            </section>
+
+            <section class="study-card">
+              <h4>Study Note</h4>
+              <textarea class="note-box" id="noteBox" placeholder="Write your class note, case example, or exam memory hook."></textarea>
+              <div class="actions">
+                <button class="icon-button" id="saveNote" title="Save note" aria-label="Save note">S</button>
+                <button class="icon-button" id="clearNote" title="Clear note" aria-label="Clear note">C</button>
+                <button class="icon-button" id="bookmark" title="Bookmark article" aria-label="Bookmark article">B</button>
+              </div>
+            </section>
+          </aside>
+        </section>
+      </main>
+
+      <aside class="right-panel">
+        <section class="panel-section">
+          <h3>Concept Index</h3>
+          <div id="conceptIndex"></div>
+        </section>
+
+        <section class="panel-section">
+          <h3>Timeline</h3>
+          <div class="timeline">
+            <div><strong>2012</strong><span>Commission proposal and institutional debate.</span></div>
+            <div><strong>2016</strong><span>GDPR adopted and published.</span></div>
+            <div><strong>2018</strong><span>GDPR became applicable across the EU.</span></div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Saved Notes</h3>
+          <div id="savedNotes" class="empty">No notes saved yet.</div>
+        </section>
+      </aside>
+    </div>
+
+    <script src="samples/gdpr/seed.js"></script>
+    <script>
+      const state = {
+        articleId: "art-5",
+        mode: "lawyer",
+        query: "",
+        notes: JSON.parse(localStorage.getItem("atlas.notes") || "{}"),
+        bookmarks: JSON.parse(localStorage.getItem("atlas.bookmarks") || "[]")
+      };
+
+      const byId = id => document.getElementById(id);
+      const articleById = id => ATLAS_SEED.articles.find(article => article.id === id);
+
+      function escapeHtml(value) {
+        return value.replace(/[&<>"']/g, char => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "\"": "&quot;",
+          "'": "&#039;"
+        }[char]));
+      }
+
+      function highlight(text) {
+        const safe = escapeHtml(text);
+        if (!state.query.trim()) return safe;
+        const query = state.query.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return safe.replace(new RegExp(query, "gi"), match => `<mark>${match}</mark>`);
+      }
+
+      function explanationFor(article) {
+        const conceptList = article.concepts.slice(0, 3).join(", ");
+        const modes = {
+          lawyer: `${article.number} should be read as a source rule inside ${article.chapter}. Key legal hooks: ${conceptList}. ATLAS must keep the official article text visible beside any explanation.`,
+          policy: `In policy terms, ${article.title.toLowerCase()} explains how GDPR changes institutional and business behaviour. It matters because it turns privacy into an operational governance obligation.`,
+          plain: `In everyday terms: this article tells organisations what they can or cannot do with people's data, and what students should check first when analysing a real business situation.`,
+          student: `Exam hook: ${article.studyPrompt} Connect this article to ${conceptList}, then cite ${article.number} as your source before giving examples.`
+        };
+        return modes[state.mode];
+      }
+
+      function renderNav() {
+        const query = state.query.toLowerCase();
+        byId("chapterNav").innerHTML = ATLAS_SEED.chapters.map(chapter => {
+          const links = chapter.articles
+            .map(articleById)
+            .filter(Boolean)
+            .filter(article => {
+              if (!query) return true;
+              return [article.number, article.title, article.text, article.concepts.join(" "), article.studyPrompt].join(" ").toLowerCase().includes(query);
+            })
+            .map(article => `
+              <button class="article-link ${article.id === state.articleId ? "active" : ""}" data-article="${article.id}">
+                <span>${article.number}</span>
+                <span>${highlight(article.title)}</span>
+              </button>
+            `).join("");
+          if (!links) return "";
+          return `
+            <details class="chapter" open>
+              <summary>${chapter.label}: ${chapter.title}</summary>
+              ${links}
+            </details>
+          `;
+        }).join("");
+
+        document.querySelectorAll("[data-article]").forEach(button => {
+          button.addEventListener("click", () => {
+            state.articleId = button.dataset.article;
+            render();
+          });
+        });
+      }
+
+      function renderReader() {
+        const article = articleById(state.articleId) || ATLAS_SEED.articles[0];
+        byId("articleNumber").textContent = article.number;
+        byId("articleTitle").innerHTML = highlight(article.title);
+        byId("articleChapter").textContent = article.chapter;
+        byId("articleText").innerHTML = highlight(article.text);
+        byId("sourceNote").textContent = `${ATLAS_SEED.document.shortTitle} source seed. Production ATLAS will link this explanation to exact paragraph anchors from EUR-Lex.`;
+        byId("explanation").textContent = explanationFor(article);
+        byId("articleConcepts").innerHTML = article.concepts.map(concept => `<span class="pill">${escapeHtml(concept)}</span>`).join("");
+        byId("noteBox").value = state.notes[article.id] || "";
+      }
+
+      function renderConceptIndex() {
+        byId("conceptIndex").innerHTML = ATLAS_SEED.concepts.map(concept => `
+          <div class="concept-row">
+            <div>
+              <strong>${escapeHtml(concept.label)}</strong>
+              <span>${escapeHtml(concept.description)}</span>
+            </div>
+            <div class="count">${concept.articles.length}</div>
+          </div>
+        `).join("");
+      }
+
+      function renderNotes() {
+        const entries = Object.entries(state.notes).filter(([, body]) => body.trim());
+        if (!entries.length) {
+          byId("savedNotes").className = "empty";
+          byId("savedNotes").textContent = "No notes saved yet.";
+          return;
+        }
+        byId("savedNotes").className = "";
+        byId("savedNotes").innerHTML = entries.map(([id, body]) => {
+          const article = articleById(id);
+          return `
+            <div class="concept-row">
+              <div>
+                <strong>${article ? article.number : id}</strong>
+                <span>${escapeHtml(body.slice(0, 110))}${body.length > 110 ? "..." : ""}</span>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      function render() {
+        byId("docTitle").textContent = `${ATLAS_SEED.document.title} - ${ATLAS_SEED.document.shortTitle}`;
+        byId("docMeta").textContent = `${ATLAS_SEED.document.jurisdiction} · ${ATLAS_SEED.document.date} · ${ATLAS_SEED.document.source}`;
+        byId("articleCount").textContent = ATLAS_SEED.articles.length;
+        byId("conceptCount").textContent = ATLAS_SEED.concepts.length;
+        renderNav();
+        renderReader();
+        renderConceptIndex();
+        renderNotes();
+      }
+
+      byId("searchInput").addEventListener("input", event => {
+        state.query = event.target.value;
+        render();
+      });
+
+      document.querySelectorAll("[data-mode]").forEach(button => {
+        button.addEventListener("click", () => {
+          state.mode = button.dataset.mode;
+          document.querySelectorAll("[data-mode]").forEach(item => item.classList.toggle("active", item === button));
+          renderReader();
+        });
+      });
+
+      byId("saveNote").addEventListener("click", () => {
+        state.notes[state.articleId] = byId("noteBox").value;
+        localStorage.setItem("atlas.notes", JSON.stringify(state.notes));
+        renderNotes();
+      });
+
+      byId("clearNote").addEventListener("click", () => {
+        delete state.notes[state.articleId];
+        localStorage.setItem("atlas.notes", JSON.stringify(state.notes));
+        renderReader();
+        renderNotes();
+      });
+
+      byId("bookmark").addEventListener("click", () => {
+        if (!state.bookmarks.includes(state.articleId)) {
+          state.bookmarks.push(state.articleId);
+          localStorage.setItem("atlas.bookmarks", JSON.stringify(state.bookmarks));
+        }
+      });
+
+      render();
+    </script>
+  </body>
+</html>
