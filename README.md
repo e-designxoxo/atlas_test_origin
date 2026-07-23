@@ -24,7 +24,9 @@ Students can open a regulation, navigate its structure, understand key articles 
 
 ## Current Prototype
 
-Open `index.html` in a browser. The prototype is static and dependency-free so it can later be published with GitHub Pages.
+Open `index.html` in a browser. The prototype is static and dependency-free so it can be published with GitHub Pages.
+
+The root page is now the ATLAS workspace dashboard. The GDPR reader lives under `documents/gdpr.html`.
 
 ## Repository Structure
 
@@ -33,10 +35,15 @@ docs/
   VISION.md
   ROADMAP.md
   DATA_MODEL.md
+assets/
+  main_logo.png
+documents/
+  gdpr.html
 samples/
   gdpr/
     seed.js
 index.html
+seed.js
 ```
 
 ## Next Engineering Milestone
@@ -48,4 +55,3 @@ Convert the static prototype into a real application with:
 - article-level search
 - citation-aware explanations
 - imported legal document storage
-
