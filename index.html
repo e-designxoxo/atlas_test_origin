@@ -3,612 +3,98 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ATLAS — Create a Fiche</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <title>ATLAS - GDPR Study Workspace</title>
     <style>
       :root {
-        --ink-900: #0b1622; 
-        --ink-800: #12233a; 
-        --ink-line: rgba(199,214,229,.14);
-        --paper: #fbfaf5; 
-        --parchment: #f4efe3; 
-        --parchment-line: #ddd2b7;
-        --ink-on-parchment: #1c1810; 
-        --muted-on-parchment: #6d6350; 
-        --muted-on-navy: #93a8bd;
-        --text-on-navy: #eef2f6; 
-        --brass: #b99552; 
-        --brass-bright: #d9bd84; 
-        --brass-deep: #8f733d;
-        --warn: #b5673a; 
-        --ok: #4d6a49;
+        --ink: #101820;
+        --muted: #8fa3b7;
+        --line: #d8dee6;
+        --paper: #f7f4ec;
+        --panel: #ffffff;
+        --nav: #071622;
+        --nav-panel: #111d2a;
+        --blue: #7f9fbd;
+        --teal: #2f7773;
+        --gold: #c39743;
+        --rose: #bd3d55;
+        --soft-blue: #edf3f8;
+        --soft-teal: #e8f3f0;
+        --soft-gold: #fff4dc;
+        --shadow: 0 18px 45px rgba(7, 22, 34, 0.13);
         --serif: "Playfair Display", "Times New Roman", Times, serif;
         --sans: "Times New Roman", Times, serif;
         --mono: "IBM Plex Mono", ui-monospace, monospace;
       }
-      
+
       * { box-sizing: border-box; }
-      body { margin: 0; background: var(--paper); color: var(--ink-on-parchment); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
-      button, input, textarea, select { font: inherit; }
-      a { color: inherit; }
 
-      .shell { min-height: 100vh; display: grid; grid-template-columns: 260px minmax(0,1fr); }
-
-      .sidebar { background: var(--ink-900); color: var(--text-on-navy); padding: 22px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
-      .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; margin-bottom: 6px; }
-      .brand svg { width: 24px; height: 24px; }
-      .brand span { font-family: var(--serif); font-size: 19px; }
-      .back-link { display: block; font-family: var(--mono); font-size: 11px; color: var(--muted-on-navy); text-decoration: none; margin-bottom: 26px; }
-      .back-link:hover { color: var(--brass-bright); }
-
-      .step-list { display: flex; flex-direction: column; gap: 4px; }
-      .step-item {
-        display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-radius: 4px;
-        border-left: 2px solid transparent; font-size: 13px; color: var(--muted-on-navy); cursor: pointer;
-      }
-      .step-item .num {
-        font-family: var(--mono); font-size: 11px; width: 20px; height: 20px; border-radius: 50%;
-        border: 1px solid var(--muted-on-navy); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-      }
-      .step-item.active { color: var(--text-on-navy); border-left-color: var(--brass); background: rgba(255,255,255,.05); }
-      .step-item.active .num { border-color: var(--brass); color: var(--brass-bright); }
-      .step-item.done .num { background: var(--brass); border-color: var(--brass); color: #16110a; }
-
-      .limits { margin-top: 30px; padding: 14px; border: 1px solid var(--ink-line); border-radius: 6px; font-size: 11.5px; line-height: 1.55; color: var(--muted-on-navy); }
-      .limits b { color: var(--brass-bright); display: block; margin-bottom: 6px; font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
-
-      .main { padding: 34px 40px 60px; max-width: 980px; }
-      .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--brass-deep); }
-      h1 { font-family: var(--serif); font-weight: 500; font-size: 28px; margin: 8px 0 6px; }
-      .lede { color: var(--muted-on-parchment); font-size: 14px; margin: 0 0 28px; max-width: 620px; line-height: 1.55; }
-
-      .panel { background: #fff; border: 1px solid var(--parchment-line); border-radius: 8px; padding: 26px; margin-bottom: 20px; display: none; }
-      .panel.active { display: block; }
-
-      label.field { display: block; margin-bottom: 16px; }
-      label.field .field-label { display: block; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-on-parchment); margin-bottom: 6px; }
-      .field input, .field select, .field textarea {
-        width: 100%; border: 1px solid var(--parchment-line); border-radius: 6px; padding: 10px 12px; font-size: 13.5px; background: var(--paper);
-      }
-      .field input:focus, .field select:focus, .field textarea:focus { outline: 0; border-color: var(--brass); box-shadow: 0 0 0 3px rgba(185,149,82,.14); }
-      .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-
-      .source-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
-      .source-tab { border: 1px solid var(--parchment-line); background: var(--parchment); padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: 12.5px; font-weight: 600; }
-      .source-tab.active { background: var(--ink-900); color: var(--text-on-navy); border-color: var(--ink-900); }
-
-      textarea#rawText { min-height: 260px; font-family: var(--mono); font-size: 12.5px; line-height: 1.55; }
-
-      .file-drop {
-        border: 1.5px dashed var(--parchment-line); border-radius: 8px; padding: 30px; text-align: center; color: var(--muted-on-parchment); font-size: 13px; cursor: pointer;
-      }
-      .file-drop:hover { border-color: var(--brass); }
-      .file-drop input { display: none; }
-
-      .actions-row { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
-      .btn { font-family: var(--sans); font-weight: 600; font-size: 13px; padding: 11px 18px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
-      .btn-brass { background: var(--brass); color: #16110a; }
-      .btn-brass:hover { background: var(--brass-bright); }
-      .btn-ghost { background: transparent; border-color: var(--parchment-line); color: var(--ink-on-parchment); }
-      .btn-ghost:hover { border-color: var(--brass); }
-      .btn:disabled { opacity: .4; cursor: not-allowed; }
-
-      .detect-summary { display: flex; gap: 16px; margin-bottom: 18px; }
-      .detect-stat { background: var(--parchment); border: 1px solid var(--parchment-line); border-radius: 6px; padding: 10px 16px; }
-      .detect-stat span { display: block; font-family: var(--mono); font-size: 10.5px; color: var(--muted-on-parchment); text-transform: uppercase; }
-      .detect-stat strong { font-family: var(--serif); font-size: 22px; }
-
-      .review-warning { display: flex; gap: 10px; align-items: flex-start; background: rgba(181,103,58,.08); border: 1px solid rgba(181,103,58,.3); border-radius: 6px; padding: 12px 14px; margin-bottom: 18px; font-size: 12.5px; color: #96502d; line-height: 1.5; }
-
-      .detected-item { border: 1px solid var(--parchment-line); border-radius: 6px; padding: 14px; margin-bottom: 10px; }
-      .detected-item-head { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
-      .detected-item-head input[type=text] { flex: 1; }
-      .detected-item-head .chip-num { font-family: var(--mono); font-size: 12px; color: var(--brass-deep); white-space: nowrap; }
-      .detected-item textarea { min-height: 70px; font-size: 12.5px; }
-      .remove-btn { font-family: var(--mono); font-size: 11px; color: var(--warn); background: none; border: 1px solid var(--parchment-line); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
-
-      .concept-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
-      .concept-input-row input { flex: 1; }
-      .chip-list { display: flex; gap: 6px; flex-wrap: wrap; }
-      .chip { font-family: var(--mono); font-size: 11.5px; background: var(--parchment); border: 1px solid var(--parchment-line); border-radius: 999px; padding: 5px 10px; display: flex; align-items: center; gap: 6px; }
-      .chip button { border: 0; background: none; cursor: pointer; color: var(--warn); font-weight: 700; }
-
-      .preview-json { background: var(--ink-900); color: #cfe0ee; font-family: var(--mono); font-size: 11.5px; line-height: 1.6; padding: 18px; border-radius: 8px; max-height: 420px; overflow: auto; white-space: pre-wrap; }
-
-      .fiches-list { margin-top: 30px; }
-      .fiches-list h3 { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted-on-parchment); margin-bottom: 10px; }
-      .fiche-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--parchment-line); font-size: 13px; }
-      .fiche-row .fiche-meta { color: var(--muted-on-parchment); font-size: 11.5px; }
-    </style>
-  </head>
-  <body>
-    <div class="shell">
-      <aside class="sidebar">
-        <a class="brand" href="../../index.html">
-          <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M22 6 L8 36" stroke="#B99552" stroke-width="2.1" stroke-linecap="round"/>
-            <path d="M22 6 L36 36" stroke="#B99552" stroke-width="2.1" stroke-linecap="round"/>
-            <line x1="12.3" y1="24" x2="31.7" y2="24" stroke="#D9BD84" stroke-width="1.5"/>
-            <line x1="12.3" y1="24" x2="9" y2="31" stroke="#D9BD84" stroke-width="1.1"/>
-            <line x1="31.7" y1="24" x2="35" y2="31" stroke="#D9BD84" stroke-width="1.1"/>
-            <path d="M6 31 Q9 35.2 12 31" stroke="#D9BD84" stroke-width="1.3" fill="none" stroke-linecap="round"/>
-            <path d="M32 31 Q35 35.2 38 31" stroke="#D9BD84" stroke-width="1.3" fill="none" stroke-linecap="round"/>
-            <circle cx="22" cy="6" r="2" fill="#F4EFE3"/>
-          </svg>
-          <span>ATLAS</span>
-        </a>
-        <a class="back-link" href="../index.html">← Back to workspace</a>
-
-        <div class="step-list" id="stepList"></div>
-
-        <div class="limits">
-          <b>What this can't do yet</b>
-          No OCR, no PDF/DOCX parsing, no AI entity extraction. Structure detection is a plain regex heuristic looking for "Article / Art. / Chapter" style headings. Everything it detects needs your review before it's trustworthy — this tool assumes that, it doesn't skip it.
-        </div>
-      </aside>
-
-      <main class="main">
-        <span class="eyebrow">§14 — Ingestion</span>
-        <h1>Create a fiche</h1>
-        <p class="lede">Paste or upload a source text, let ATLAS propose a structure, correct what it gets wrong, then export it in the same shape the workspace reader already consumes.</p>
-
-        <!-- STEP 1: SOURCE -->
-        <section class="panel" id="panel-1">
-          <div class="source-tabs">
-            <button class="source-tab active" data-source="paste">Paste text</button>
-            <button class="source-tab" data-source="upload">Upload .txt / .md</button>
-          </div>
-
-          <div id="pasteSource">
-            <label class="field">
-              <span class="field-label">Raw source text</span>
-              <textarea id="rawText" placeholder="Paste the full text of the law, regulation, judgment, or article here — including chapter and article headings as they appear in the original."></textarea>
-            </label>
-          </div>
-
-          <div id="uploadSource" style="display:none;">
-            <label class="file-drop">
-              <input type="file" id="fileInput" accept=".txt,.md">
-              <div id="fileDropLabel">Click to choose a .txt or .md file — PDF/DOCX upload needs a real backend, not part of this static prototype.</div>
-            </label>
-          </div>
-
-          <div class="actions-row">
-            <span></span>
-            <button class="btn btn-brass" id="toStep2">Continue →</button>
-          </div>
-        </section>
-
-        <!-- STEP 2: METADATA -->
-        <section class="panel" id="panel-2">
-          <div class="field-row">
-            <label class="field">
-              <span class="field-label">Document title</span>
-              <input type="text" id="metaTitle" placeholder="Regulation (EU) 2026/1386">
-            </label>
-            <label class="field">
-              <span class="field-label">Short title</span>
-              <input type="text" id="metaShort" placeholder="New FDI Screening Regulation">
-            </label>
-          </div>
-          <div class="field-row">
-            <label class="field">
-              <span class="field-label">Jurisdiction</span>
-              <select id="metaJurisdiction">
-                <option>European Union</option>
-                <option>France</option>
-                <option>United Kingdom</option>
-                <option>United States</option>
-                <option>Other / international</option>
-              </select>
-            </label>
-            <label class="field">
-              <span class="field-label">Document type</span>
-              <select id="metaType">
-                <option>Regulation</option>
-                <option>Directive</option>
-                <option>National statute / code</option>
-                <option>Court decision</option>
-                <option>Institutional report</option>
-                <option>Other</option>
-              </select>
-            </label>
-          </div>
-          <div class="field-row">
-            <label class="field">
-              <span class="field-label">Date(s)</span>
-              <input type="text" id="metaDate" placeholder="Adopted 17 June 2026 · published 26 June 2026">
-            </label>
-            <label class="field">
-              <span class="field-label">Official source URL</span>
-              <input type="text" id="metaSourceUrl" placeholder="https://eur-lex.europa.eu/...">
-            </label>
-          </div>
-          <div class="field-row">
-            <label class="field">
-              <span class="field-label">Relation to another fiche (optional)</span>
-              <select id="metaRelationType">
-                <option value="">None</option>
-                <option value="REPEALS">Repeals</option>
-                <option value="AMENDS">Amends</option>
-                <option value="IMPLEMENTS">Implements</option>
-                <option value="COMPARATIVE">Comparator to</option>
-              </select>
-            </label>
-            <label class="field">
-              <span class="field-label">Related document (title, free text for now)</span>
-              <input type="text" id="metaRelationTarget" placeholder="Regulation (EU) 2019/452">
-            </label>
-          </div>
-          <p style="font-size:12px;color:var(--muted-on-parchment);margin-top:-6px;">
-            This just records the relationship as a label for now — it isn't linked to a real document graph yet. That's the data-model work still ahead of this tool.
-          </p>
-
-          <div class="actions-row">
-            <button class="btn btn-ghost" data-back="1">← Back</button>
-            <button class="btn btn-brass" id="toStep3">Detect structure →</button>
-          </div>
-        </section>
-
-        <!-- STEP 3: STRUCTURE DETECTION / REVIEW -->
-        <section class="panel" id="panel-3">
-          <div class="review-warning">
-            ⚠ Detected automatically by a regex heuristic (lines starting with "Article", "Art.", "Chapter", "Section", etc.). It will miss unusual formatting and mis-split some clauses — review every item below before exporting.
-          </div>
-
-          <div class="detect-summary">
-            <div class="detect-stat"><span>Chapters</span><strong id="statChapters">0</strong></div>
-            <div class="detect-stat"><span>Articles</span><strong id="statArticles">0</strong></div>
-            <div class="detect-stat"><span>Unassigned lines</span><strong id="statUnassigned">0</strong></div>
-          </div>
-
-          <div id="detectedList"></div>
-
-          <button class="btn btn-ghost" id="addArticleBtn" style="margin-bottom:20px;">+ Add article manually</button>
-
-          <div class="actions-row">
-            <button class="btn btn-ghost" data-back="2">← Back</button>
-            <button class="btn btn-brass" id="toStep4">Continue →</button>
-          </div>
-        </section>
-
-        <!-- STEP 4: CONCEPTS -->
-        <section class="panel" id="panel-4">
-          <label class="field">
-            <span class="field-label">Concepts covered by this document</span>
-          </label>
-          <div class="concept-input-row">
-            <input type="text" id="conceptInput" placeholder="e.g. Foreign direct investment — press Enter to add">
-            <button class="btn btn-ghost" id="addConceptBtn">Add</button>
-          </div>
-          <div class="chip-list" id="conceptChips"></div>
-
-          <div class="actions-row">
-            <button class="btn btn-ghost" data-back="3">← Back</button>
-            <button class="btn btn-brass" id="toStep5">Review &amp; export →</button>
-          </div>
-        </section>
-
-        <!-- STEP 5: REVIEW / EXPORT -->
-        <section class="panel" id="panel-5">
-          <p style="font-size:13.5px;color:var(--muted-on-parchment);margin-top:0;">
-            This is the exact shape the workspace reader consumes. Download it, drop it alongside <code>seed.js</code>, and wire it into <code>app/index.html</code>'s document switcher.
-          </p>
-          <div class="preview-json" id="jsonPreview"></div>
-          <div class="actions-row">
-            <button class="btn btn-ghost" data-back="4">← Back</button>
-            <div style="display:flex; gap:10px;">
-              <button class="btn btn-ghost" id="copyJsonBtn">Copy</button>
-              <button class="btn btn-brass" id="downloadJsonBtn">Download seed file</button>
-            </div>
-          </div>
-
-          <div class="fiches-list">
-            <h3>Fiches created this session</h3>
-            <div id="fichesList"><span class="empty" style="color:var(--muted-on-parchment);font-size:12.5px;">None yet.</span></div>
-          </div>
-        </section>
-      </main>
-    </div>
-
-    <script>
-      const steps = ["Source", "Metadata", "Structure", "Concepts", "Export"];
-      let currentStep = 1;
-      let detectedArticles = []; // {number, title, body, chapter}
-      let concepts = [];
-      let savedFiches = JSON.parse(localStorage.getItem("atlas.fiches") || "[]");
-
-      const byId = id => document.getElementById(id);
-
-      function renderStepList() {
-        byId("stepList").innerHTML = steps.map((label, i) => {
-          const n = i + 1;
-          const cls = n === currentStep ? "active" : (n < currentStep ? "done" : "");
-          return `<div class="step-item ${cls}" data-step="${n}"><span class="num">${n}</span>${label}</div>`;
-        }).join("");
-        document.querySelectorAll("[data-step]").forEach(el => {
-          el.addEventListener("click", () => goToStep(parseInt(el.dataset.step, 10)));
-        });
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--sans);
       }
 
-      function goToStep(n) {
-        currentStep = n;
-        document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-        byId("panel-" + n).classList.add("active");
-        renderStepList();
-        if (n === 3) runDetection();
-        if (n === 5) renderPreview();
+      button, input, textarea {
+        font: inherit;
       }
 
-      document.querySelectorAll("[data-back]").forEach(btn => {
-        btn.addEventListener("click", () => goToStep(parseInt(btn.dataset.back, 10)));
-      });
-
-      byId("toStep2").addEventListener("click", () => goToStep(2));
-      byId("toStep3").addEventListener("click", () => goToStep(3));
-      byId("toStep4").addEventListener("click", () => goToStep(4));
-      byId("toStep5").addEventListener("click", () => goToStep(5));
-
-      // --- Source tabs ---
-      document.querySelectorAll(".source-tab").forEach(tab => {
-        tab.addEventListener("click", () => {
-          document.querySelectorAll(".source-tab").forEach(t => t.classList.toggle("active", t === tab));
-          const isPaste = tab.dataset.source === "paste";
-          byId("pasteSource").style.display = isPaste ? "block" : "none";
-          byId("uploadSource").style.display = isPaste ? "none" : "block";
-        });
-      });
-
-      byId("fileInput").addEventListener("change", e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        byId("fileDropLabel").textContent = "Reading " + file.name + "…";
-        const reader = new FileReader();
-        reader.onload = () => {
-          byId("rawText").value = reader.result;
-          byId("fileDropLabel").textContent = file.name + " loaded (" + Math.round(file.size/1024) + " KB). Choose another file to replace it.";
-        };
-        reader.readAsText(file);
-      });
-
-      // --- Heuristic structure detection ---
-      function runDetection() {
-        const text = byId("rawText").value;
-        detectedArticles = [];
-        let unassignedLines = 0;
-
-        if (!text.trim()) {
-          renderDetected();
-          return;
-        }
-
-        const lines = text.split(/\r?\n/);
-        const chapterRe = /^(chapter|chapitre|title|titre|section)\s+([ivxlc0-9]+)\b(.*)$/i;
-        const articleRe = /^(article|art\.?)\s+([0-9]+[a-z\-]*)\b(.*)$/i;
-
-        let currentChapter = "Unassigned";
-        let currentArticle = null;
-
-        lines.forEach(line => {
-          const trimmed = line.trim();
-          if (!trimmed) return;
-
-          const chMatch = trimmed.match(chapterRe);
-          const artMatch = trimmed.match(articleRe);
-
-          if (chMatch) {
-            currentChapter = (chMatch[1] + " " + chMatch[2] + (chMatch[3] ? " —" + chMatch[3] : "")).trim();
-            return;
-          }
-
-          if (artMatch) {
-            if (currentArticle) detectedArticles.push(currentArticle);
-            currentArticle = {
-              number: (artMatch[1] + " " + artMatch[2]).replace(/\barticle\b/i, "Article").replace(/\bart\.?\b/i, "Art."),
-              title: artMatch[3] ? artMatch[3].replace(/^[-–—:.\s]+/, "").trim() : "",
-              body: "",
-              chapter: currentChapter
-            };
-            return;
-          }
-
-          if (currentArticle) {
-            currentArticle.body += (currentArticle.body ? " " : "") + trimmed;
-          } else {
-            unassignedLines++;
-          }
-        });
-        if (currentArticle) detectedArticles.push(currentArticle);
-
-        byId("statUnassigned").textContent = unassignedLines;
-        renderDetected();
+      .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 300px minmax(0, 1fr) 360px;
       }
 
-      function renderDetected() {
-        const chapters = [...new Set(detectedArticles.map(a => a.chapter))];
-        byId("statChapters").textContent = chapters.length;
-        byId("statArticles").textContent = detectedArticles.length;
-
-        byId("detectedList").innerHTML = detectedArticles.map((a, i) => `
-          <div class="detected-item" data-index="${i}">
-            <div class="detected-item-head">
-              <span class="chip-num">${escapeHtml(a.chapter)}</span>
-              <input type="text" class="art-number" value="${escapeHtml(a.number)}" style="max-width:140px;">
-              <input type="text" class="art-title" value="${escapeHtml(a.title)}" placeholder="Article title">
-              <button class="remove-btn" data-remove="${i}">Remove</button>
-            </div>
-            <textarea class="art-body">${escapeHtml(a.body)}</textarea>
-          </div>
-        `).join("") || `<p style="color:var(--muted-on-parchment);font-size:13px;">No "Article ..." or "Chapter ..." headings detected. Paste text with source in Step 1, or add articles manually below.</p>`;
-
-        document.querySelectorAll("[data-remove]").forEach(btn => {
-          btn.addEventListener("click", () => {
-            detectedArticles.splice(parseInt(btn.dataset.remove, 10), 1);
-            syncDetectedEdits();
-            renderDetected();
-          });
-        });
-
-        document.querySelectorAll(".detected-item").forEach(item => {
-          ["art-number", "art-title", "art-body"].forEach(cls => {
-            item.querySelector("." + cls).addEventListener("input", () => syncDetectedEdits());
-          });
-        });
+      .sidebar {
+        background: var(--nav);
+        color: #f7f4ec;
+        padding: 28px 24px;
+        min-height: 100vh;
+        position: sticky;
+        top: 0;
+        overflow-y: auto;
       }
 
-      function syncDetectedEdits() {
-        document.querySelectorAll(".detected-item").forEach(item => {
-          const i = parseInt(item.dataset.index, 10);
-          if (!detectedArticles[i]) return;
-          detectedArticles[i].number = item.querySelector(".art-number").value;
-          detectedArticles[i].title = item.querySelector(".art-title").value;
-          detectedArticles[i].body = item.querySelector(".art-body").value;
-        });
+      .brand {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 12px;
+        margin-bottom: 18px;
       }
 
-      byId("addArticleBtn").addEventListener("click", () => {
-        detectedArticles.push({ number: "Art. " + (detectedArticles.length + 1), title: "", body: "", chapter: "Unassigned" });
-        renderDetected();
-      });
-
-      // --- Concepts ---
-      function renderConceptChips() {
-        byId("conceptChips").innerHTML = concepts.map((c, i) => `
-          <span class="chip">${escapeHtml(c)}<button data-remove-concept="${i}">×</button></span>
-        `).join("");
-        document.querySelectorAll("[data-remove-concept]").forEach(btn => {
-          btn.addEventListener("click", () => {
-            concepts.splice(parseInt(btn.dataset.removeConcept, 10), 1);
-            renderConceptChips();
-          });
-        });
+      .brand-logo {
+        width: 44px;
+        height: 44px;
+        object-fit: contain;
+        flex: 0 0 auto;
       }
 
-      function addConcept() {
-        const val = byId("conceptInput").value.trim();
-        if (val && !concepts.includes(val)) concepts.push(val);
-        byId("conceptInput").value = "";
-        renderConceptChips();
+      .brand h1 {
+        margin: 0;
+        font-size: 30px;
+        letter-spacing: 0;
+        font-family: var(--serif);
+        font-weight: 600;
       }
 
-      byId("addConceptBtn").addEventListener("click", addConcept);
-      byId("conceptInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addConcept(); } });
-
-      // --- Export ---
-      function slug(str) {
-        return (str || "doc").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 40) || "doc";
+      .brand p {
+        margin: 2px 0 0;
+        color: var(--muted);
+        font-size: 13px;
       }
 
-      function buildFicheObject() {
-        syncDetectedEdits();
-        const docId = "doc-" + slug(byId("metaShort").value || byId("metaTitle").value);
-        const chapterNames = [...new Set(detectedArticles.map(a => a.chapter))];
-
-        const document_ = {
-          id: docId,
-          title: byId("metaTitle").value || "Untitled document",
-          shortTitle: byId("metaShort").value || byId("metaTitle").value || "Untitled",
-          jurisdiction: byId("metaJurisdiction").value,
-          date: byId("metaDate").value,
-          source: "user-provided — confirm official citation",
-          sourceUrl: byId("metaSourceUrl").value,
-          status: "Draft fiche — created via Create Fiche tool, not yet verified against an official publisher.",
-          verification: "UNVERIFIED — created from pasted/uploaded text, not cross-checked against an official source this session.",
-          relation: byId("metaRelationType").value ? byId("metaRelationType").value.toLowerCase() : "none"
-        };
-
-        const chapters = chapterNames.map((name, i) => ({
-          id: docId + "-ch-" + (i + 1),
-          documentId: docId,
-          label: "Ch. " + (i + 1),
-          title: name,
-          articles: detectedArticles.filter(a => a.chapter === name).map((a, j) => docId + "-art-" + i + "-" + j)
-        }));
-
-        const articles = detectedArticles.map((a, idx) => {
-          const chIndex = chapterNames.indexOf(a.chapter);
-          const artIndex = detectedArticles.filter((x, k) => x.chapter === a.chapter && k <= idx).length - 1;
-          return {
-            id: docId + "-art-" + chIndex + "-" + artIndex,
-            documentId: docId,
-            number: a.number,
-            title: a.title || "(untitled)",
-            chapter: a.chapter,
-            quote: null,
-            citation: a.number + " — drafted from user-provided text, not an independently verified excerpt",
-            confidence: "unverified — human-entered, not cross-checked against an official source",
-            concepts: concepts,
-            legal: a.body || "(no text captured — edit in Step 3)",
-            policy: "(add Policy &amp; Institutional Context reading)",
-            plain: "(add Plain Reality reading)"
-          };
-        });
-
-        const relation = byId("metaRelationType").value;
-        const relationships = relation ? [{
-          type: relation,
-          from: docId,
-          to: slug(byId("metaRelationTarget").value),
-          note: `${byId("metaTitle").value || "This document"} ${relation.toLowerCase()} ${byId("metaRelationTarget").value || "(unspecified)"} — label only, not yet linked to a real document object.`,
-          status: "suggested — entered by hand, not verified"
-        }] : [];
-
-        return { document: document_, chapters, articles, relationships, concepts };
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        color: var(--muted);
+        text-decoration: none;
+        font-family: var(--mono);
+        font-size: 15px;
+        margin: 6px 0 24px;
       }
 
-      function renderPreview() {
-        const fiche = buildFicheObject();
-        byId("jsonPreview").textContent = JSON.stringify(fiche, null, 2);
-        renderSavedFiches();
+      .back-link:hover {
+        color: #f7f4ec;
       }
-
-      byId("copyJsonBtn").addEventListener("click", () => {
-        navigator.clipboard.writeText(byId("jsonPreview").textContent);
-      });
-
-      byId("downloadJsonBtn").addEventListener("click", () => {
-        const fiche = buildFicheObject();
-        const jsContent = "// Generated by ATLAS Create Fiche tool — review before use.\n" +
-          "// UNVERIFIED against any official source unless you've checked it yourself.\n" +
-          "const ATLAS_FICHE_" + slug(fiche.document.shortTitle).toUpperCase().replace(/-/g, "_") + " = " +
-          JSON.stringify(fiche, null, 2) + ";\n";
-
-        const blob = new Blob([jsContent], { type: "text/javascript" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = slug(fiche.document.shortTitle) + ".fiche.js";
-        a.click();
-        URL.revokeObjectURL(url);
-
-        savedFiches.push({ id: fiche.document.id, title: fiche.document.title, jurisdiction: fiche.document.jurisdiction, articles: fiche.articles.length, savedAt: new Date().toISOString() });
-        localStorage.setItem("atlas.fiches", JSON.stringify(savedFiches));
-        renderSavedFiches();
-      });
-
-      function renderSavedFiches() {
-        if (!savedFiches.length) {
-          byId("fichesList").innerHTML = `<span style="color:var(--muted-on-parchment);font-size:12.5px;">None yet.</span>`;
-          return;
-        }
-        byId("fichesList").innerHTML = savedFiches.map(f => `
-          <div class="fiche-row">
-            <div><strong>${escapeHtml(f.title)}</strong></div>
-            <div class="fiche-meta">${escapeHtml(f.jurisdiction)} · ${f.articles} articles</div>
-          </div>
-        `).join("");
-      }
-
-      function escapeHtml(value) {
-        return String(value || "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#039;" }[ch]));
-      }
-
-      renderStepList();
-      renderConceptChips();
-      renderSavedFiches();
-      goToStep(1);
-    </script>
-  </body>
-</html>
