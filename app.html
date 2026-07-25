@@ -10,6 +10,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
     <style>
+
+/* ═══════════════════════════════════════════════════════════════
+     DESIGN TOKENS  ── change only these to restyle everything
+     ═══════════════════════════════════════════════════════════════ */
       :root {
         --cream: #F7F4EE;
         --teal: #447F80;
@@ -30,6 +34,7 @@
         --amber: #C4935A;
         --red: #C84B4B;
         --green: #4A9B6A;
+  /* Typography */
         --serif: 'Playfair Display', serif;
         --sans: 'DM Sans', sans-serif;
         --mono: 'JetBrains Mono', monospace;
@@ -56,7 +61,7 @@
         overflow: hidden;
       }
 
-      /* ═══════════ SIDEBAR ═══════════ */
+                                                                                  /* ═══════════ SIDEBAR : TO REVIEW LATER ═══════════ */
       .sidebar {
         width: 208px;
         flex-shrink: 0;
@@ -289,7 +294,10 @@
         height: 100vh;
       }
 
-      /* ═══════════ TOP BAR ═══════════ */
+/* ═══════════════════════════════════════════════════════════════
+     TOP BAR
+   ═══════════════════════════════════════════════════════════════ */
+      
       .topbar {
         display: flex;
         align-items: center;
@@ -459,6 +467,7 @@
       }
 
       /* ═══════════ BADGES ═══════════ */
+      
       .type-badge {
         display: inline-flex;
         padding: 2px 8px;
@@ -492,6 +501,7 @@
       }
 
       /* ═══════════ UPLOAD ZONE ═══════════ */
+      
       .upload-container {
         display: flex;
         flex-direction: column;
@@ -762,7 +772,12 @@
       .processing-step .ps-label.active { color: var(--ink); font-weight: 500; }
       .processing-step .ps-label.pending { color: var(--dimmer); }
 
-      /* ═══════════ FICHE ═══════════ */
+      /* ═══════════ FICHE ═══════════ */ 
+      
+                                                              /* ═══════════════════════════════════════════════════════════════
+                                                                 FICHE DESIGN 
+                                                                 ═══════════════════════════════════════════════════════════════ */
+      
       .fiche-container {
         max-width: 720px;
         margin: 0 auto;
@@ -1527,6 +1542,10 @@
       }
 
       /* ═══════════ RESPONSIVE ═══════════ */
+
+                                                            /* ═══════════════════════════════════════════════════════════════
+                                                               MOBILE DRAWER // RESPONSIVE 
+                                                               ═══════════════════════════════════════════════════════════════ */
       @media (max-width: 1024px) {
         .right-panel { display: none; }
       }
