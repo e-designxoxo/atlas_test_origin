@@ -1,0 +1,2506 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ATLAS — Legal Knowledge Workspace</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+      :root {
+        --cream: #F7F4EE;
+        --teal: #447F80;
+        --teal-dark: #335F60;
+        --teal-fade: rgba(68,127,128,0.10);
+        --slate: #636885;
+        --navy: #141928;
+        --navy-mid: #1D2640;
+        --navy-hi: #26304E;
+        --platinum: #DAD8E1;
+        --glacier: #B0B8E1;
+        --glacier-fade: rgba(176,184,225,0.18);
+        --ink: #1A1C2E;
+        --muted: #636885;
+        --dimmer: #9196AE;
+        --border: #DAD8E1;
+        --card: #FFFFFF;
+        --amber: #C4935A;
+        --red: #C84B4B;
+        --green: #4A9B6A;
+        --serif: 'Playfair Display', serif;
+        --sans: 'DM Sans', sans-serif;
+        --mono: 'JetBrains Mono', monospace;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: var(--sans);
+        background: var(--cream);
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+        overflow: hidden;
+        height: 100vh;
+      }
+
+      button { font: inherit; cursor: pointer; border: none; background: none; }
+      input { font: inherit; }
+
+      /* ═══════════ LAYOUT ═══════════ */
+      .app-shell {
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      /* ═══════════ SIDEBAR ═══════════ */
+      .sidebar {
+        width: 208px;
+        flex-shrink: 0;
+        background: var(--navy);
+        border-right: 1px solid var(--navy-hi);
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+
+      .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px;
+        border-bottom: 1px solid var(--navy-hi);
+      }
+
+      .sidebar-brand img {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        object-fit: contain;
+      }
+
+      .sidebar-brand h1 {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        color: #FFFFFF;
+        font-family: var(--sans);
+      }
+
+      .sidebar-brand span {
+        display: block;
+        font-size: 9px;
+        color: var(--glacier);
+        font-family: var(--mono);
+        opacity: 0.7;
+      }
+
+      .sidebar-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 12px 8px;
+      }
+
+      .sidebar-nav button {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-family: var(--sans);
+        color: var(--glacier);
+        width: 100%;
+        text-align: left;
+        transition: all 0.15s;
+      }
+
+      .sidebar-nav button:hover {
+        background: var(--navy-hi);
+        color: #fff;
+      }
+
+      .sidebar-nav button.active {
+        background: var(--navy-hi);
+        color: #fff;
+      }
+
+      .sidebar-nav button svg {
+        opacity: 0.65;
+        flex-shrink: 0;
+      }
+
+      .sidebar-nav button.active svg {
+        opacity: 1;
+        color: var(--teal);
+      }
+
+      .sidebar-nav .alert-badge {
+        margin-left: auto;
+        font-size: 9px;
+        font-family: var(--mono);
+        font-weight: 700;
+        background: var(--red);
+        color: #fff;
+        border-radius: 999px;
+        padding: 2px 6px;
+      }
+
+      .sidebar-divider {
+        height: 1px;
+        background: var(--navy-hi);
+        margin: 4px 16px;
+      }
+
+      .sidebar-section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 16px 4px;
+      }
+
+      .sidebar-section-title span {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--glacier);
+        font-family: var(--mono);
+        opacity: 0.55;
+      }
+
+      .sidebar-section-title button {
+        opacity: 0.5;
+        color: var(--glacier);
+        padding: 2px;
+        border-radius: 4px;
+      }
+
+      .sidebar-section-title button:hover { opacity: 1; }
+
+      .sidebar-docs {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0 8px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .sidebar-doc {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        width: 100%;
+        text-align: left;
+        transition: all 0.15s;
+      }
+
+      .sidebar-doc:hover {
+        background: rgba(255,255,255,0.04);
+      }
+
+      .sidebar-doc.active {
+        background: var(--navy-hi);
+      }
+
+      .sidebar-doc .doc-name {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--glacier);
+        font-family: var(--sans);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .sidebar-doc.active .doc-name { color: #fff; }
+
+      .sidebar-doc .doc-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 9px;
+        color: var(--dimmer);
+        font-family: var(--mono);
+      }
+
+      .sidebar-doc .doc-alerts {
+        color: var(--amber);
+        font-family: var(--mono);
+        font-size: 9px;
+      }
+
+      .sidebar-user {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--navy-hi);
+      }
+
+      .sidebar-user .avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--teal);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        font-family: var(--sans);
+        flex-shrink: 0;
+      }
+
+      .sidebar-user .user-info {
+        min-width: 0;
+      }
+
+      .sidebar-user .user-name {
+        font-size: 12px;
+        font-weight: 500;
+        color: #fff;
+        font-family: var(--sans);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .sidebar-user .user-role {
+        font-size: 9px;
+        color: var(--glacier);
+        font-family: var(--mono);
+        opacity: 0.6;
+      }
+
+      /* ═══════════ MAIN ═══════════ */
+      .main-area {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        height: 100vh;
+      }
+
+      /* ═══════════ TOP BAR ═══════════ */
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 20px;
+        height: 56px;
+        flex-shrink: 0;
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .topbar .hamburger {
+        display: none;
+        margin-right: 4px;
+        color: var(--muted);
+      }
+
+      .topbar .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--muted);
+        font-family: var(--mono);
+      }
+
+      .topbar .breadcrumb .bc-root { color: var(--teal); }
+      .topbar .breadcrumb .bc-current { color: var(--ink); }
+
+      .topbar .stage-tabs {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: 16px;
+        padding: 4px;
+        border-radius: 8px;
+        background: #F0EFF8;
+      }
+
+      .stage-tab {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        font-family: var(--sans);
+        transition: all 0.15s;
+        color: var(--muted);
+      }
+
+      .stage-tab.active {
+        background: var(--card);
+        color: var(--teal);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      }
+
+      .stage-tab .roman {
+        font-weight: 700;
+        font-family: var(--mono);
+        font-size: 11px;
+        opacity: 0.7;
+      }
+
+      .topbar .spacer { flex: 1; }
+
+      .topbar .top-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .topbar .btn-export {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        font-family: var(--sans);
+        background: var(--teal-fade);
+        color: var(--teal);
+      }
+
+      .topbar .btn-share {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        font-family: var(--sans);
+        border: 1px solid var(--border);
+        color: var(--muted);
+        background: transparent;
+      }
+
+      .topbar .bell-wrap {
+        position: relative;
+      }
+
+      .topbar .bell-dot {
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--red);
+      }
+
+      /* ═══════════ CONTENT AREA ═══════════ */
+      .content-area {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .content-main {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0 24px;
+      }
+
+      /* ═══════════ RIGHT PANEL ═══════════ */
+      .right-panel {
+        width: 288px;
+        flex-shrink: 0;
+        background: var(--card);
+        border-left: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .right-panel-tabs {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .right-panel-tabs button {
+        flex: 1;
+        padding: 12px 0;
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-family: var(--mono);
+        color: var(--muted);
+        border-bottom: 2px solid transparent;
+        transition: all 0.15s;
+      }
+
+      .right-panel-tabs button.active {
+        color: var(--teal);
+        border-bottom-color: var(--teal);
+      }
+
+      .right-panel-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+      }
+
+      /* ═══════════ BADGES ═══════════ */
+      .type-badge {
+        display: inline-flex;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-family: var(--mono);
+      }
+
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-family: var(--mono);
+      }
+
+      .sev-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 500;
+        font-family: var(--sans);
+      }
+
+      /* ═══════════ UPLOAD ZONE ═══════════ */
+      .upload-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        gap: 24px;
+        padding: 40px 0;
+      }
+
+      .drop-zone {
+        width: 100%;
+        max-width: 560px;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        padding: 56px 32px;
+        text-align: center;
+        transition: all 0.2s;
+        cursor: pointer;
+        border: 2px dashed var(--platinum);
+        background: #FAFAF8;
+      }
+
+      .drop-zone.drag-active {
+        border-color: var(--teal);
+        background: var(--teal-fade);
+      }
+
+      .drop-zone .upload-icon-circle {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--teal-fade);
+        border: 1px solid rgba(68,127,128,0.2);
+      }
+
+      .drop-zone h3 {
+        font-family: var(--serif);
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--ink);
+        margin: 0;
+      }
+
+      .drop-zone .ext-row {
+        display: flex;
+        gap: 8px;
+      }
+
+      .drop-zone .ext-badge {
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        font-family: var(--mono);
+        background: var(--glacier-fade);
+        color: var(--slate);
+      }
+
+      .drop-zone .btn-select {
+        padding: 8px 20px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        font-family: var(--sans);
+        background: var(--teal);
+        color: #fff;
+        transition: opacity 0.15s;
+      }
+
+      .drop-zone .btn-select:hover { opacity: 0.8; }
+
+      .file-preview {
+        width: 100%;
+        max-width: 560px;
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        background: var(--card);
+        border: 1px solid var(--border);
+      }
+
+      .file-preview .fp-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--teal-fade);
+        flex-shrink: 0;
+      }
+
+      .file-preview .fp-name {
+        font-weight: 500;
+        font-size: 13px;
+        color: var(--ink);
+        font-family: var(--sans);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .file-preview .fp-meta {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: var(--mono);
+        margin-top: 2px;
+      }
+
+      .file-preview .fp-analyze {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        font-family: var(--sans);
+        background: var(--teal);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+        transition: opacity 0.15s;
+      }
+
+      .file-preview .fp-analyze:hover { opacity: 0.9; }
+
+      .file-preview .fp-close {
+        color: var(--muted);
+        flex-shrink: 0;
+      }
+
+      .demo-link {
+        font-size: 12px;
+        color: var(--dimmer);
+        font-family: var(--sans);
+      }
+
+      .demo-link button {
+        color: var(--teal);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+
+      /* ═══════════ PROCESSING ═══════════ */
+      .processing-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        gap: 32px;
+        padding: 48px 0;
+      }
+
+      .processing-orb {
+        position: relative;
+        width: 112px;
+        height: 112px;
+      }
+
+      .processing-orb svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      @keyframes orb-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      @keyframes orb-pulse {
+        0%, 100% { opacity: 0.5; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.08); }
+      }
+
+      .orb-ring {
+        animation: orb-spin 3s linear infinite;
+        transform-box: fill-box;
+        transform-origin: center;
+      }
+
+      .orb-core {
+        animation: orb-pulse 2s ease-in-out infinite;
+        transform-box: fill-box;
+        transform-origin: center;
+      }
+
+      .processing-phase {
+        text-align: center;
+      }
+
+      .processing-phase h3 {
+        font-family: var(--serif);
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--ink);
+        margin-bottom: 4px;
+      }
+
+      .processing-phase p {
+        font-size: 13px;
+        color: var(--muted);
+        font-family: var(--sans);
+      }
+
+      .processing-steps {
+        width: 100%;
+        max-width: 384px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .processing-step {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        border-radius: 8px;
+        transition: all 0.3s;
+      }
+
+      .processing-step .ps-dot {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .processing-step .ps-dot.done { background: var(--teal); }
+      .processing-step .ps-dot.active { background: rgba(68,127,128,0.2); }
+      .processing-step .ps-dot.pending { background: var(--platinum); }
+
+      .processing-step .ps-dot-inner {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--teal);
+      }
+
+      @keyframes dot-pulse {
+        0%, 100% { opacity: 0.4; }
+        50% { opacity: 1; }
+      }
+
+      .ps-dot-inner.pulsing {
+        animation: dot-pulse 1s ease-in-out infinite;
+      }
+
+      .processing-step .ps-label {
+        font-size: 13px;
+        font-family: var(--sans);
+      }
+
+      .processing-step .ps-label.done { color: var(--teal); }
+      .processing-step .ps-label.active { color: var(--ink); font-weight: 500; }
+      .processing-step .ps-label.pending { color: var(--dimmer); }
+
+      /* ═══════════ FICHE ═══════════ */
+      .fiche-container {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 24px 8px;
+      }
+
+      .fiche-header {
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 32px;
+        background: var(--card);
+        border: 1px solid var(--border);
+      }
+
+      .fiche-header .fh-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      .fiche-header .fh-badges {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .fiche-header .fh-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+
+      .fiche-header .fh-actions button {
+        padding: 6px;
+        border-radius: 4px;
+        color: var(--muted);
+        transition: all 0.15s;
+      }
+
+      .fiche-header .fh-actions button:hover {
+        background: rgba(0,0,0,0.04);
+      }
+
+      .fiche-header h1 {
+        font-family: var(--serif);
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--ink);
+        line-height: 1.35;
+        margin-bottom: 8px;
+      }
+
+      .fiche-header .fh-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px 24px;
+        margin-top: 12px;
+      }
+
+      .fiche-header .fh-meta-item span {
+        display: block;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--dimmer);
+        font-family: var(--mono);
+      }
+
+      .fiche-header .fh-meta-item p {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--ink);
+        font-family: var(--sans);
+      }
+
+      .fiche-header .fh-amended {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+
+      .fiche-header .fh-amended span {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--dimmer);
+        font-family: var(--mono);
+        margin-right: 8px;
+      }
+
+      .fiche-header .fh-amended a {
+        font-size: 11px;
+        color: var(--teal);
+        font-family: var(--mono);
+        margin-right: 8px;
+        text-decoration: none;
+      }
+
+      /* Sections */
+      .fiche-section {
+        margin-bottom: 32px;
+      }
+
+      .fiche-section .section-divider {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .fiche-section .section-divider .line {
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+      }
+
+      .fiche-section .section-divider span {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--slate);
+        font-family: var(--mono);
+        padding: 0 8px;
+      }
+
+      /* Summary */
+      .summary-box {
+        border-radius: 8px;
+        padding: 20px;
+        background: var(--teal-fade);
+        border: 1px solid rgba(68,127,128,0.13);
+      }
+
+      .summary-box p {
+        font-size: 14px;
+        line-height: 1.65;
+        color: var(--ink);
+        font-family: var(--sans);
+      }
+
+      /* Provisions */
+      .provision-item {
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        margin-bottom: 8px;
+      }
+
+      .provision-item button.provision-toggle {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        text-align: left;
+        background: var(--card);
+        transition: background 0.15s;
+      }
+
+      .provision-item button.provision-toggle:hover {
+        background: rgba(0,0,0,0.02);
+      }
+
+      .provision-item button.provision-toggle.expanded {
+        background: var(--teal-fade);
+      }
+
+      .provision-item .prov-art {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--teal);
+        font-family: var(--mono);
+        flex-shrink: 0;
+        min-width: 52px;
+      }
+
+      .provision-item .prov-title {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--ink);
+        font-family: var(--sans);
+      }
+
+      .provision-item .prov-chevron {
+        flex-shrink: 0;
+        color: var(--muted);
+        transition: transform 0.2s;
+      }
+
+      .provision-item .prov-chevron.open {
+        transform: rotate(180deg);
+      }
+
+      .provision-item .prov-detail {
+        padding: 0 16px 16px;
+        background: var(--teal-fade);
+      }
+
+      .provision-item .prov-detail p {
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--ink);
+        font-family: var(--sans);
+      }
+
+      /* Concepts */
+      .concept-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .concept-tag {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 500;
+        font-family: var(--sans);
+        background: var(--glacier-fade);
+        color: var(--slate);
+        border: 1px solid var(--platinum);
+        cursor: pointer;
+        transition: opacity 0.15s;
+      }
+
+      .concept-tag:hover { opacity: 0.8; }
+
+      /* Connections */
+      .connections-list {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+      }
+
+      .connection-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        transition: background 0.15s;
+        cursor: pointer;
+      }
+
+      .connection-row:hover { background: rgba(0,0,0,0.015); }
+
+      .connection-row:nth-child(even) { background: #FAFAF8; }
+      .connection-row:nth-child(even):hover { background: rgba(0,0,0,0.025); }
+
+      .connection-row .conn-name {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--ink);
+        font-family: var(--sans);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .connection-row .conn-rel {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: var(--mono);
+        flex-shrink: 0;
+      }
+
+      .connection-row .conn-count {
+        font-size: 11px;
+        color: var(--dimmer);
+        font-family: var(--mono);
+        flex-shrink: 0;
+      }
+
+      /* Alerts in fiche */
+      .alert-card {
+        border-radius: 8px;
+        padding: 16px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        margin-bottom: 8px;
+        display: flex;
+        gap: 12px;
+      }
+
+      .alert-card .alert-content {
+        flex: 1;
+      }
+
+      .alert-card .alert-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+
+      .alert-card .alert-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--ink);
+        font-family: var(--sans);
+      }
+
+      .alert-card .alert-date {
+        font-size: 11px;
+        color: var(--dimmer);
+        font-family: var(--mono);
+        flex-shrink: 0;
+      }
+
+      .alert-card .alert-text {
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--muted);
+        font-family: var(--sans);
+      }
+
+      /* Jurisdictions */
+      .juris-table {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+      }
+
+      .juris-table .jt-header {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        padding: 10px 16px;
+        background: #F5F3EE;
+        font-size: 10px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--dimmer);
+        font-family: var(--mono);
+      }
+
+      .juris-table .jt-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        padding: 12px 16px;
+        font-size: 13px;
+        font-family: var(--sans);
+        border-top: 1px solid var(--border);
+      }
+
+      .juris-table .jt-row:nth-child(odd) { background: var(--card); }
+      .juris-table .jt-row:nth-child(even) { background: #FAFAF8; }
+
+      .juris-table .jt-country { font-weight: 500; color: var(--ink); }
+      .juris-table .jt-authority { font-weight: 700; color: var(--teal); font-family: var(--mono); font-size: 11px; }
+      .juris-table .jt-impl { font-size: 12px; color: var(--muted); }
+      .juris-table .jt-status { font-size: 12px; }
+
+      /* Timeline */
+      .timeline {
+        position: relative;
+        padding-left: 16px;
+      }
+
+      .timeline::before {
+        content: '';
+        position: absolute;
+        left: 16px;
+        top: 8px;
+        bottom: 8px;
+        width: 1px;
+        background: var(--platinum);
+      }
+
+      .timeline-item {
+        position: relative;
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      .timeline-item:last-child { margin-bottom: 0; }
+
+      .timeline-item .tl-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        margin-top: 2px;
+        margin-left: -22px;
+        z-index: 1;
+        background: var(--platinum);
+        border: 2px solid var(--border);
+      }
+
+      .timeline-item:last-child .tl-dot {
+        background: var(--teal);
+        border-color: var(--teal);
+      }
+
+      .timeline-item .tl-year {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--teal);
+        font-family: var(--mono);
+        display: block;
+      }
+
+      .timeline-item .tl-text {
+        font-size: 13px;
+        color: var(--ink);
+        font-family: var(--sans);
+        margin-top: 2px;
+      }
+
+      /* ═══════════ RIGHT PANEL CONTENT ═══════════ */
+      .rp-search-input {
+        position: relative;
+        margin-bottom: 12px;
+      }
+
+      .rp-search-input svg {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted);
+      }
+
+      .rp-search-input input {
+        width: 100%;
+        padding: 10px 12px 10px 32px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: #F7F4EE;
+        font-size: 13px;
+        font-family: var(--sans);
+        color: var(--ink);
+        outline: none;
+      }
+
+      .rp-search-input input:focus {
+        border-color: var(--teal);
+      }
+
+      .rp-empty {
+        text-align: center;
+        padding: 32px 0;
+      }
+
+      .rp-empty svg {
+        margin: 0 auto 8px;
+        color: var(--platinum);
+      }
+
+      .rp-empty p {
+        font-size: 12px;
+        color: var(--dimmer);
+        font-family: var(--sans);
+      }
+
+      .rp-search-result {
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      .rp-search-result:hover { background: rgba(0,0,0,0.015); }
+
+      .rp-search-result .rs-badges {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+
+      .rp-search-result .rs-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--ink);
+        font-family: var(--sans);
+        margin-bottom: 4px;
+      }
+
+      .rp-search-result .rs-excerpt {
+        font-size: 12px;
+        line-height: 1.4;
+        color: var(--muted);
+        font-family: var(--sans);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .rp-graph-title {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--ink);
+        font-family: var(--sans);
+        margin-bottom: 2px;
+      }
+
+      .rp-graph-subtitle {
+        font-size: 12px;
+        color: var(--dimmer);
+        font-family: var(--sans);
+        margin-bottom: 16px;
+      }
+
+      .rp-graph-svg-wrap {
+        border-radius: 12px;
+        padding: 12px;
+        background: #FAFAF8;
+        border: 1px solid var(--border);
+        height: 224px;
+        margin-bottom: 16px;
+      }
+
+      .rp-graph-legend {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .rp-graph-legend .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      .rp-graph-legend .legend-item:hover { background: rgba(0,0,0,0.015); }
+
+      .rp-graph-legend .legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .rp-graph-legend .legend-name {
+        font-size: 12px;
+        color: var(--ink);
+        font-family: var(--sans);
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .rp-graph-legend .legend-count {
+        font-size: 11px;
+        color: var(--dimmer);
+        font-family: var(--mono);
+        flex-shrink: 0;
+      }
+
+      .rp-alert-card {
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        margin-bottom: 8px;
+      }
+
+      .rp-alert-card .ra-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+
+      .rp-alert-card .ra-title {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--ink);
+        font-family: var(--sans);
+        margin-bottom: 2px;
+      }
+
+      .rp-alert-card .ra-meta {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: var(--sans);
+      }
+
+      .rp-alerts-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .rp-alerts-header span {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--ink);
+        font-family: var(--sans);
+      }
+
+      .rp-alerts-header button {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        color: var(--muted);
+        font-family: var(--mono);
+      }
+
+      /* ═══════════ LIBRARY VIEW ═══════════ */
+      .library-view {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 24px 8px;
+      }
+
+      .library-view h2 {
+        font-family: var(--serif);
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--ink);
+        margin-bottom: 24px;
+      }
+
+      .library-doc-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-align: left;
+        width: 100%;
+      }
+
+      .library-doc-card:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      }
+
+      .library-doc-card .ldc-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .library-doc-card .ldc-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .library-doc-card .ldc-title-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 2px;
+      }
+
+      .library-doc-card .ldc-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink);
+        font-family: var(--sans);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .library-doc-card .ldc-meta {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: var(--sans);
+      }
+
+      .library-doc-card .ldc-connections {
+        text-align: right;
+        flex-shrink: 0;
+      }
+
+      .library-doc-card .ldc-conn-num {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--teal);
+        font-family: var(--mono);
+      }
+
+      .library-doc-card .ldc-conn-label {
+        font-size: 11px;
+        color: var(--dimmer);
+        font-family: var(--mono);
+      }
+
+      .library-doc-card .ldc-alert-badge {
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        font-family: var(--mono);
+        background: rgba(200,75,75,0.10);
+        color: var(--red);
+        flex-shrink: 0;
+      }
+
+      /* ═══════════ ALERTS VIEW ═══════════ */
+      .alerts-view {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 24px 8px;
+      }
+
+      .alerts-view h2 {
+        font-family: var(--serif);
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--ink);
+        margin-bottom: 24px;
+      }
+
+      /* ═══════════ MOBILE OVERLAY ═══════════ */
+      .mobile-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+      }
+
+      .mobile-overlay.open {
+        display: block;
+      }
+
+      .mobile-overlay .backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+      }
+
+      .mobile-overlay .sidebar-mobile {
+        position: relative;
+        z-index: 50;
+        height: 100%;
+        width: 208px;
+      }
+
+      /* ═══════════ RESPONSIVE ═══════════ */
+      @media (max-width: 1024px) {
+        .right-panel { display: none; }
+      }
+
+      @media (max-width: 768px) {
+        .sidebar { display: none; }
+        .topbar .hamburger { display: block; }
+        .topbar .stage-tabs .stage-tab span:not(.roman) { display: none; }
+      }
+
+      @media (min-width: 769px) {
+        .mobile-overlay { display: none !important; }
+      }
+
+      /* Utility: hidden file input */
+      .hidden-input { display: none; }
+
+      /* SVG icon replacements using simple shapes */
+      .icon-svg { display: inline-block; vertical-align: middle; flex-shrink: 0; }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+
+      <!-- ═══════════ SIDEBAR ═══════════ -->
+      <aside class="sidebar" id="sidebarDesktop">
+        <div class="sidebar-brand">
+          <img src="assets/main_logo.png" alt="ATLAS" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+          <div style="display:none; width:32px; height:32px; border-radius:8px; background:var(--teal); align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:14px; font-family:var(--sans);">A</div>
+          <div>
+            <h1>ATLAS</h1>
+            <span>Workplace v3</span>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <button class="active" data-nav="workspace" onclick="navigateTo('workspace')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+            Workspace
+          </button>
+          <button data-nav="library" onclick="navigateTo('library')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Library
+          </button>
+          <button data-nav="search" onclick="navigateTo('search')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Search
+          </button>
+          <button data-nav="graph" onclick="navigateTo('graph')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/></svg>
+            Knowledge
+          </button>
+          <button data-nav="alerts" onclick="navigateTo('alerts')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Alerts
+            <span class="alert-badge">5</span>
+          </button>
+          <button data-nav="settings" onclick="navigateTo('settings')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Settings
+          </button>
+        </nav>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-section-title">
+          <span>Library</span>
+          <button title="New document">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+
+        <div class="sidebar-docs" id="sidebarDocList"></div>
+
+        <div class="sidebar-user">
+          <div class="avatar">JD</div>
+          <div class="user-info">
+            <p class="user-name">Jean Dupont</p>
+            <p class="user-role">Senior Counsel</p>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ═══════════ MOBILE OVERLAY ═══════════ -->
+      <div class="mobile-overlay" id="mobileOverlay">
+        <div class="backdrop" onclick="closeMobileSidebar()"></div>
+        <div class="sidebar-mobile" id="mobileSidebarContainer"></div>
+      </div>
+
+      <!-- ═══════════ MAIN AREA ═══════════ -->
+      <div class="main-area">
+
+        <!-- Top Bar -->
+        <div class="topbar">
+          <button class="hamburger" onclick="openMobileSidebar()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+
+          <div class="breadcrumb">
+            <span class="bc-root">ATLAS</span>
+            <span>›</span>
+            <span id="breadcrumbNav">Workspace</span>
+            <span id="breadcrumbDoc" style="display:none;">› <span class="bc-current" id="breadcrumbDocName"></span></span>
+          </div>
+
+          <div class="stage-tabs" id="stageTabs">
+            <button class="stage-tab active" data-stage="upload" onclick="setStage('upload')">
+              <span class="roman">I</span> <span>Upload Document</span>
+            </button>
+            <button class="stage-tab" data-stage="processing" onclick="setStage('processing')">
+              <span class="roman">II</span> <span>Processing</span>
+            </button>
+            <button class="stage-tab" data-stage="fiche" onclick="setStage('fiche')">
+              <span class="roman">III</span> <span>Analysis Fiche</span>
+            </button>
+          </div>
+
+          <div class="spacer"></div>
+
+          <div class="top-actions" id="topActions" style="display:none;">
+            <button class="btn-export">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+            <button class="btn-share">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              Share
+            </button>
+          </div>
+
+          <div class="bell-wrap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <div class="bell-dot"></div>
+          </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area">
+          <div class="content-main" id="contentMain"></div>
+          <div class="right-panel" id="rightPanel">
+            <div class="right-panel-tabs">
+              <button class="active" data-rptab="search" onclick="setRightTab('search')">Search</button>
+              <button data-rptab="connections" onclick="setRightTab('connections')">Connections</button>
+              <button data-rptab="alerts" onclick="setRightTab('alerts')">Alerts</button>
+            </div>
+            <div class="right-panel-content" id="rightPanelContent"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" accept=".pdf,.txt,.html" class="hidden-input" id="hiddenFileInput" onchange="handleFileSelect(event)">
+
+    <script>
+      // ═══════════════════════════════════════════
+      // DATA
+      // ═══════════════════════════════════════════
+      const TYPE_COLORS = {
+        directive: '#447F80',
+        judgment: '#C4935A',
+        regulation: '#636885',
+        treaty: '#7A6AAA',
+        instrument: '#4A9B6A',
+        statute: '#C4935A',
+      };
+
+      const LIBRARY_DOCS = [
+        { id: 'mifid2',   title: 'Directive 2014/65/EU', short: 'MiFID II',            type: 'directive',   field: 'Trade & Finance',  date: '15 May 2014',         connections: 47, alerts: 3, status: 'In Force' },
+        { id: 'ecj-c413', title: 'ECJ C-413/14 P',       short: 'Intel v Commission',  type: 'judgment',    field: 'EU Competition',   date: '6 Sep 2017',          connections: 31, alerts: 0, status: 'Final' },
+        { id: 'tfeu101',  title: 'Art. 101 TFEU',         short: 'Competition Law',     type: 'regulation',  field: 'EU Competition',   date: '1 Dec 2009',          connections: 88, alerts: 1, status: 'In Force' },
+        { id: 'gdpr83',   title: 'GDPR Art. 83',          short: 'Administrative Fines',type: 'regulation',  field: 'Data Protection',  date: '25 May 2018',         connections: 24, alerts: 2, status: 'In Force' },
+        { id: 'rome1',    title: 'Rome I Regulation',     short: 'Contractual Oblig.',  type: 'regulation',  field: 'Civil Law',        date: '17 Jun 2008',         connections: 19, alerts: 0, status: 'In Force' },
+      ];
+
+      const MIFID_FICHE = {
+        docType: 'European Directive',
+        ref: '2014/65/EU',
+        fullTitle: 'Directive of the European Parliament and of the Council on markets in financial instruments and amending Directive 2002/92/EC and Directive 2011/61/EU',
+        short: 'MiFID II',
+        jurisdiction: 'European Union',
+        body: 'European Parliament & Council of the EU',
+        dateAdopted: '15 May 2014',
+        dateForce: '3 January 2018',
+        field: 'Trade & Finance Law',
+        status: 'In Force',
+        amendedBy: ['Directive 2016/1034/EU', 'Directive 2019/2034/EU (IFD)'],
+        summary: 'MiFID II establishes a harmonised regulatory framework for investment services across EU financial markets. It substantially strengthens investor protection, enhances market transparency, and expands the scope of the original MiFID (2004/39/EC) to cover organised trading facilities, systematic internalisers, and a wider class of financial instruments. The Directive operates alongside MiFIR (Regulation 600/2014), which sets out directly applicable trading and reporting obligations.',
+        provisions: [
+          { art: 'Art. 25', title: 'Assessment of suitability and appropriateness', detail: 'Investment firms must obtain necessary information about clients\' knowledge and experience, financial situation, and investment objectives before providing investment advice or portfolio management. Firms must ensure that recommended instruments are suitable for the client.' },
+          { art: 'Art. 27', title: 'Obligation to execute orders on terms most favourable', detail: 'Investment firms must take all sufficient steps to obtain the best possible result for clients when executing client orders, taking into account price, costs, speed, likelihood of execution and settlement, size, nature, or any other consideration relevant to the execution of the order.' },
+          { art: 'Art. 44', title: 'Admission of financial instruments to trading', detail: 'Regulated markets shall adopt and publish transparent and non-discriminatory rules for the admission of financial instruments to trading. Regulated markets may only admit financial instruments to trading where the issuer has complied with applicable disclosure requirements.' },
+          { art: 'Art. 54', title: 'Suitability assessment', detail: 'Detailed implementing rules on how investment firms must conduct and document the suitability assessment when providing investment advice or discretionary portfolio management, including minimum information to be obtained and periodic reassessment requirements.' },
+          { art: 'Art. 58', title: 'Transaction reporting to competent authorities', detail: 'Investment firms executing transactions in financial instruments admitted to trading on a regulated market, MTF, OTF, or for which a request for admission to trading has been made, must report complete and accurate details of such transactions to the competent authority as quickly as possible, and no later than the close of the following working day.' },
+        ],
+        concepts: ['Best Execution', 'Suitability', 'Appropriateness', 'Investment Advice', 'Algorithmic Trading', 'Market Transparency', 'Client Classification', 'Systematic Internaliser', 'Transaction Reporting', 'Product Governance', 'Unbundling', 'OTF', 'MTF'],
+        connections: [
+          { title: 'MiFIR — Regulation 600/2014',            type: 'regulation',  rel: 'Implemented by',   conns: 13 },
+          { title: 'ESMA RTS & ITS (13 technical standards)', type: 'regulation',  rel: 'Supplemented by',  conns: 13 },
+          { title: 'MiFID I — Directive 2004/39/EC',          type: 'directive',   rel: 'Replaces',         conns: 8 },
+          { title: 'Capital Markets Union Package',            type: 'directive',   rel: 'Part of',          conns: 5 },
+          { title: 'ECJ C-186/18 — Société Générale',         type: 'judgment',    rel: 'Interpreted by',   conns: 3 },
+          { title: 'Basel III Accord',                         type: 'treaty',      rel: 'Contextual link',  conns: 2 },
+        ],
+        alerts: [
+          { date: '15 Jan 2026', sev: 'high',   title: 'ESMA Q&A — 47 new clarifications', text: 'ESMA published updated Q&A on MiFID II data reporting obligations, including 47 new questions and answers on transaction reporting and commodity derivatives.' },
+          { date: '3 Mar 2025',  sev: 'medium', title: 'Delegated Regulation amendment',    text: 'Commission Delegated Regulation amending RTS 1 on pre-trade and post-trade transparency requirements for equity instruments entered into force.' },
+          { date: '12 Nov 2024', sev: 'low',    title: 'ESMA Supervisory Report',           text: 'Annual supervisory convergence report on MiFID II research unbundling published. Key findings on member state implementation divergences.' },
+        ],
+        jurisdictions: [
+          { code: 'EU', name: 'European Union',  authority: 'ESMA',  impl: 'Primary legislation',        status: 'In Force' },
+          { code: 'FR', name: 'France',          authority: 'AMF',   impl: 'Ord. 2017-1107 + RG AMF',    status: 'Transposed' },
+          { code: 'GB', name: 'United Kingdom',  authority: 'FCA',   impl: 'UK MiFID (post-Brexit)',      status: 'Diverging' },
+          { code: 'DE', name: 'Germany',         authority: 'BaFin', impl: 'WpHG (Securities Act)',       status: 'Transposed' },
+        ],
+        timeline: [
+          { year: '2004', text: 'MiFID I adopted (Dir. 2004/39/EC)' },
+          { year: '2014', text: 'MiFID II & MiFIR adopted by Parliament' },
+          { year: '2018', text: 'MiFID II enters into application (3 Jan)' },
+          { year: '2020', text: 'Quick Fix: COVID-19 amendments to transparency waivers' },
+          { year: '2021', text: 'Investment Firms Regulation (IFR/IFD) cross-reference' },
+          { year: '2025', text: 'CMU 2.0 review: Listing Act amendments proposed' },
+        ],
+      };
+
+      const SEARCH_CORPUS = [
+        { id: 'mifid2-25',  title: 'MiFID II — Art. 25 Suitability',         type: 'directive',  field: 'Trade & Finance',  excerpt: 'Investment firms must obtain necessary information about clients\' knowledge, financial situation, and investment objectives…' },
+        { id: 'ecj-c413',   title: 'ECJ C-413/14 P — Intel v Commission',    type: 'judgment',   field: 'EU Competition',   excerpt: 'A dominant undertaking is not prohibited from engaging in competition on the merits. However, all the circumstances…' },
+        { id: 'tfeu-101',   title: 'Art. 101 TFEU — Prohibited agreements',  type: 'regulation', field: 'EU Competition',   excerpt: 'The following shall be prohibited as incompatible with the internal market: all agreements between undertakings…' },
+        { id: 'gdpr-83',    title: 'GDPR Art. 83 — Administrative fines',    type: 'regulation', field: 'Data Protection',  excerpt: 'Each supervisory authority shall ensure that each administrative fine imposed is effective, proportionate and dissuasive…' },
+        { id: 'rome1-3',    title: 'Rome I Reg. — Art. 3 Freedom of choice', type: 'regulation', field: 'Civil Law',        excerpt: 'A contract shall be governed by the law chosen by the parties. The choice shall be made expressly or clearly…' },
+        { id: 'basel3-lr',  title: 'Basel III — Leverage Ratio Framework',   type: 'treaty',     field: 'Banking Law',      excerpt: 'Banks must maintain a leverage ratio of at least 3% (Tier 1 capital to total exposure). The ratio is designed to…' },
+        { id: 'icc-23',     title: 'ICC Rules 2021 — Art. 23 Terms of Ref.', type: 'instrument', field: 'Arbitration',      excerpt: 'As soon as it has received the file from the Secretariat, the arbitral tribunal shall draw up, on the basis of…' },
+      ];
+
+      const GEN_ALERTS = [
+        { date: '15 Jan 2026', sev: 'high',   doc: 'MiFID II',       field: 'Trade & Finance', title: 'ESMA Q&A Update — 47 new clarifications on data reporting' },
+        { date: '22 Dec 2025', sev: 'medium', doc: 'Art. 101 TFEU',  field: 'EU Competition',  title: 'ECJ ruling C-238/25 — New safe harbor interpretation' },
+        { date: '3 Mar 2025',  sev: 'medium', doc: 'MiFID II',       field: 'Trade & Finance', title: 'Delegated Regulation amends RTS on pre-trade transparency' },
+        { date: '12 Nov 2024', sev: 'low',    doc: 'MiFID II',       field: 'Trade & Finance', title: 'ESMA supervisory convergence report — research unbundling' },
+        { date: '8 Oct 2024',  sev: 'low',    doc: 'GDPR Art. 83',   field: 'Data Protection', title: 'EDPB revised guidelines on administrative fines calculation' },
+      ];
+
+      const PROC_STEPS = [
+        'Reading document structure & metadata',
+        'Extracting legal provisions & articles',
+        'Cross-referencing 1,247 indexed documents',
+        'Mapping legal connections & relationships',
+        'Generating analysis fiche',
+      ];
+
+      // ═══════════════════════════════════════════
+      // STATE
+      // ═══════════════════════════════════════════
+      let state = {
+        stage: 'upload',        // 'upload' | 'processing' | 'fiche'
+        activeNav: 'workspace',
+        activeDoc: null,
+        rightTab: 'search',
+        searchQuery: '',
+        expandedProvision: null,
+        progress: 0,
+        phase: 0,
+        progressInterval: null,
+      };
+
+      // ═══════════════════════════════════════════
+      // RENDER ENGINE
+      // ═══════════════════════════════════════════
+      function render() {
+        renderSidebarDocs();
+        renderStageTabs();
+        renderContent();
+        renderRightPanel();
+        renderTopActions();
+        renderBreadcrumb();
+        updateSidebarActive();
+      }
+
+      function renderSidebarDocs() {
+        const container = document.getElementById('sidebarDocList');
+        if (!container) return;
+        container.innerHTML = LIBRARY_DOCS.map(doc => `
+          <button class="sidebar-doc ${state.activeDoc && state.activeDoc.id === doc.id ? 'active' : ''}"
+            onclick="openDocument('${doc.id}')">
+            <span class="doc-name">${doc.short}</span>
+            <span class="doc-meta">
+              <span>${doc.type}</span>
+              ${doc.alerts > 0 ? `<span class="doc-alerts">· ${doc.alerts} alerts</span>` : ''}
+            </span>
+          </button>
+        `).join('');
+      }
+
+      function renderStageTabs() {
+        const tabs = document.querySelectorAll('#stageTabs .stage-tab');
+        tabs.forEach(tab => {
+          tab.classList.toggle('active', tab.dataset.stage === state.stage);
+        });
+      }
+
+      function renderContent() {
+        const main = document.getElementById('contentMain');
+        if (!main) return;
+
+        if (state.activeNav === 'workspace') {
+          if (state.stage === 'upload') main.innerHTML = renderUploadZone();
+          else if (state.stage === 'processing') main.innerHTML = renderProcessingView();
+          else if (state.stage === 'fiche') main.innerHTML = renderFiche();
+        } else if (state.activeNav === 'library') {
+          main.innerHTML = renderLibraryView();
+        } else if (state.activeNav === 'graph') {
+          main.innerHTML = renderGraphView();
+        } else if (state.activeNav === 'alerts') {
+          main.innerHTML = renderAlertsView();
+        } else if (state.activeNav === 'search') {
+          main.innerHTML = renderSearchView();
+        } else if (state.activeNav === 'settings') {
+          main.innerHTML = renderSettingsView();
+        }
+
+        // Rebind event listeners after DOM update
+        rebindEvents();
+      }
+
+      function renderRightPanel() {
+        const panel = document.getElementById('rightPanelContent');
+        if (!panel) return;
+
+        const shouldShow = state.activeNav === 'workspace' || state.activeNav === 'search' || state.activeNav === 'alerts';
+        const panelEl = document.getElementById('rightPanel');
+        if (panelEl) {
+          // On mobile (<1024px) right panel is hidden via CSS
+        }
+
+        if (state.rightTab === 'search') {
+          panel.innerHTML = renderRightSearch();
+        } else if (state.rightTab === 'connections') {
+          panel.innerHTML = renderRightConnections();
+        } else if (state.rightTab === 'alerts') {
+          panel.innerHTML = renderRightAlerts();
+        }
+      }
+
+      function renderTopActions() {
+        const actions = document.getElementById('topActions');
+        if (actions) {
+          actions.style.display = (state.activeDoc && state.stage === 'fiche') ? 'flex' : 'none';
+        }
+      }
+
+      function renderBreadcrumb() {
+        const navSpan = document.getElementById('breadcrumbNav');
+        const docSpan = document.getElementById('breadcrumbDoc');
+        const docName = document.getElementById('breadcrumbDocName');
+        if (navSpan) navSpan.textContent = state.activeNav.charAt(0).toUpperCase() + state.activeNav.slice(1);
+        if (docSpan && docName) {
+          if (state.activeDoc && state.stage === 'fiche') {
+            docSpan.style.display = '';
+            docName.textContent = state.activeDoc.short;
+          } else {
+            docSpan.style.display = 'none';
+          }
+        }
+      }
+
+      function updateSidebarActive() {
+        document.querySelectorAll('.sidebar-nav button').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.nav === state.activeNav);
+        });
+      }
+
+      function rebindEvents() {
+        // Provision toggle buttons
+        document.querySelectorAll('.provision-toggle').forEach(btn => {
+          btn.onclick = function() {
+            const art = this.dataset.art;
+            state.expandedProvision = state.expandedProvision === art ? null : art;
+            renderContent();
+          };
+        });
+
+        // Upload zone events
+        const dropZone = document.getElementById('dropZone');
+        if (dropZone) {
+          dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('drag-active');
+          });
+          dropZone.addEventListener('dragleave', function() {
+            this.classList.remove('drag-active');
+          });
+          dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-active');
+            const file = e.dataTransfer.files[0];
+            if (file) simulateFile(file.name, file.name.split('.').pop());
+          });
+          dropZone.addEventListener('click', function() {
+            document.getElementById('hiddenFileInput').click();
+          });
+        }
+      }
+
+      // ═══════════════════════════════════════════
+      // VIEW RENDERERS
+      // ═══════════════════════════════════════════
+
+      function renderUploadZone() {
+        return `
+          <div class="upload-container">
+            <div class="drop-zone" id="dropZone">
+              <div class="upload-icon-circle">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </div>
+              <div>
+                <h3>Drop a legal document here</h3>
+                <p style="font-size:13px; color:var(--muted); margin-top:4px;">Accepts PDF, TXT, HTML — legislation, judgments, directives, reports</p>
+              </div>
+              <div class="ext-row">
+                <span class="ext-badge">.pdf</span>
+                <span class="ext-badge">.txt</span>
+                <span class="ext-badge">.html</span>
+              </div>
+              <button class="btn-select">Select File</button>
+            </div>
+            <p class="demo-link">Or <button onclick="loadMiFIDDemo()">load the MiFID II demo</button> to see a full analysis fiche</p>
+          </div>
+        `;
+      }
+
+      function renderProcessingView() {
+        const dashOffset = 301.5 - (state.progress * 3.015);
+        return `
+          <div class="processing-container">
+            <div class="processing-orb">
+              <svg viewBox="0 0 112 112">
+                <defs>
+                  <filter id="proc-glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                </defs>
+                <circle cx="56" cy="56" r="48" fill="none" stroke="var(--platinum)" stroke-width="1.5"/>
+                <circle cx="56" cy="56" r="48" fill="none" stroke="var(--teal)" stroke-width="2"
+                  stroke-dasharray="${state.progress * 3.015} 301.5" stroke-linecap="round"
+                  style="transition: stroke-dasharray 0.5s ease"/>
+                <g class="orb-ring">
+                  <circle cx="56" cy="8" r="4" fill="var(--teal)" filter="url(#proc-glow)"/>
+                </g>
+                <circle cx="56" cy="56" r="22" fill="var(--teal-fade)" class="orb-core"/>
+                <circle cx="56" cy="56" r="12" fill="var(--teal)" filter="url(#proc-glow)" class="orb-core"/>
+                <text x="56" y="62" text-anchor="middle" fill="#fff" font-size="12" font-family="var(--mono)" font-weight="500">${state.progress}%</text>
+              </svg>
+            </div>
+            <div class="processing-phase">
+              <h3>${PROC_STEPS[Math.min(state.phase, PROC_STEPS.length - 1)]}</h3>
+              <p>ATLAS is building your legal knowledge fiche</p>
+            </div>
+            <div class="processing-steps">
+              ${PROC_STEPS.map((step, i) => {
+                const done = i < state.phase;
+                const active = i === state.phase;
+                return `
+                  <div class="processing-step" style="background:${active ? 'var(--teal-fade)' : done ? 'rgba(68,127,128,0.04)' : 'transparent'}">
+                    <div class="ps-dot ${done ? 'done' : active ? 'active' : 'pending'}">
+                      ${done ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : active ? '<div class="ps-dot-inner pulsing"></div>' : ''}
+                    </div>
+                    <span class="ps-label ${done ? 'done' : active ? 'active' : 'pending'}">${step}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderFiche() {
+        const f = MIFID_FICHE;
+        return `
+          <div class="fiche-container">
+            <!-- Header -->
+            <div class="fiche-header">
+              <div class="fh-top">
+                <div class="fh-badges">
+                  ${typeBadgeHTML(f.docType.toLowerCase().includes('directive') ? 'directive' : 'regulation')}
+                  <span class="status-badge" style="background:rgba(74,155,106,0.12); color:var(--green);">● ${f.status}</span>
+                </div>
+                <div class="fh-actions">
+                  <button title="Download"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+                  <button title="Share"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+                  <button title="More"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                </div>
+              </div>
+              <h1>${f.fullTitle}</h1>
+              <div class="fh-meta">
+                ${['Reference', 'Body', 'Adopted', 'In Force', 'Jurisdiction', 'Field'].map((label, i) => {
+                  const vals = [f.ref, f.body, f.dateAdopted, f.dateForce, f.jurisdiction, f.field];
+                  return `<div class="fh-meta-item"><span>${label}</span><p>${vals[i]}</p></div>`;
+                }).join('')}
+              </div>
+              ${f.amendedBy.length > 0 ? `
+                <div class="fh-amended">
+                  <span>Amended by</span>
+                  ${f.amendedBy.map(a => `<a href="#">${a}</a>`).join('')}
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Summary -->
+            <div class="fiche-section">
+              <div class="section-divider"><div class="line"></div><span>Executive Summary</span><div class="line"></div></div>
+              <div class="summary-box"><p>${f.summary}</p></div>
+            </div>
+
+            <!-- Key Provisions -->
+            <div class="fiche-section">
+              <div class="section-divider"><div class="line"></div><span>Key Provisions</span><div class="line"></div></div>
+              ${f.provisions.map(p => `
+                <div class="provision-item">
+                  <button class="provision-toggle ${state.expandedProvision === p.art ? 'expanded' : ''}" data-art="${p.art}">
+                    <span class="prov-art">${p.art}</span>
+                    <span class="prov-title">${p.title}</span>
+                    <svg class="prov-chevron ${state.expandedProvision === p.art ? 'open' : ''}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  ${state.expandedProvision === p.art ? `<div class="prov-detail"><p>${p.detail}</p></div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Concepts -->
+            <div class="fiche-section">
+              <div class="section-divider"><div class="line"></div><span>Legal Concepts Identified</span><div class="line"></div></div>
+              <div class="concept-tags">
+                ${f.concepts.map(c => `<span class="concept-tag"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>${c}</span>`).join('')}
+              </div>
+            </div>
+
+            <!-- Connections -->
+            <div class="fiche-section">
+              <div class="section-divider"><div class="line"></div><span>Connected Documents</span><div class="line"></div></div>
+              <div class="connections-list">
+                ${f.connections.map((conn, i) => `
+                  <div class="connection-row" style="${i < f.connections.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}">
+                    ${typeBadgeHTML(conn.type)}
+                    <span class="conn-name">${conn.title}</span>
+                    <span class="conn-rel">${conn.rel}</span>
+                    <span class="conn-count">${conn.conns} links</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--dimmer)" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Alerts -->
+            <div class="fiche-section">
+              <div class="section-divider"><div class="line"></div><span>Update Alerts</span><div class="line"></div></div>
+              ${f.alerts.map(a => `
+                <div class="alert-card">
+                  ${sevBadgeHTML(a.sev)}
+                  <div class="alert-content">
+                    <div class="alert-title-row">
+                      <span class="alert-title">${a.title}</span>
+                      <span class="alert-date">${a.date}</span>
+                    </div>
+                    <p class="alert-text">${a.text}</p>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Jurisdictions -->
+            <div class="fiche-section">
+              <div class="section-divider"><div class="line"></div><span>Jurisdiction Coverage</span><div class="line"></div></div>
+              <div class="juris-table">
+                <div class="jt-header"><span>Country</span><span>Authority</span><span>Implementation</span><span>Status</span></div>
+                ${f.jurisdictions.map(j => `
+                  <div class="jt-row">
+                    <span class="jt-country">${j.name}</span>
+                    <span class="jt-authority">${j.authority}</span>
+                    <span class="jt-impl">${j.impl}</span>
+                    <span class="jt-status" style="color:${j.status === 'In Force' || j.status === 'Transposed' ? 'var(--green)' : j.status === 'Diverging' ? 'var(--amber)' : 'var(--muted)'}">${j.status}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="fiche-section">
+              <div class="section-divider"><div class="line"></div><span>Legislative Timeline</span><div class="line"></div></div>
+              <div class="timeline">
+                ${f.timeline.map(t => `
+                  <div class="timeline-item">
+                    <div class="tl-dot"></div>
+                    <div>
+                      <span class="tl-year">${t.year}</span>
+                      <p class="tl-text">${t.text}</p>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderLibraryView() {
+        return `
+          <div class="library-view">
+            <h2>Document Library</h2>
+            ${LIBRARY_DOCS.map(doc => `
+              <button class="library-doc-card" onclick="openDocument('${doc.id}')">
+                <div class="ldc-icon" style="background:${TYPE_COLORS[doc.type]}18">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${TYPE_COLORS[doc.type]}" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <div class="ldc-info">
+                  <div class="ldc-title-row">
+                    <span class="ldc-title">${doc.title}</span>
+                    ${typeBadgeHTML(doc.type)}
+                  </div>
+                  <p class="ldc-meta">${doc.field} · ${doc.date}</p>
+                </div>
+                <div class="ldc-connections">
+                  <p class="ldc-conn-num">${doc.connections}</p>
+                  <p class="ldc-conn-label">connections</p>
+                </div>
+                ${doc.alerts > 0 ? `<span class="ldc-alert-badge">${doc.alerts} alerts</span>` : ''}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--dimmer)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      function renderGraphView() {
+        return `
+          <div style="max-width:720px; margin:0 auto; padding:24px 8px;">
+            <h2 style="font-family:var(--serif); font-size:20px; font-weight:700; color:var(--ink); margin-bottom:8px;">Knowledge Navigation</h2>
+            <p style="font-size:13px; color:var(--muted); margin-bottom:24px;">Navigate connections across all indexed documents</p>
+            <div style="border-radius:12px; padding:32px; background:var(--card); border:1px solid var(--border); height:384px;">
+              ${miniGraphSVG()}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAlertsView() {
+        return `
+          <div class="alerts-view">
+            <h2>Update Alerts</h2>
+            ${GEN_ALERTS.map(a => `
+              <div class="alert-card" style="margin-bottom:12px;">
+                ${sevBadgeHTML(a.sev)}
+                <div class="alert-content">
+                  <p style="font-weight:600; font-size:13px; color:var(--ink); margin-bottom:4px;">${a.title}</p>
+                  <div style="display:flex; align-items:center; gap:8px; font-size:11px; color:var(--muted); font-family:var(--mono);">
+                    <span>${a.doc}</span><span>·</span><span>${a.field}</span><span>·</span><span>${a.date}</span>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      function renderSearchView() {
+        return `
+          <div style="max-width:720px; margin:0 auto; padding:24px 8px;">
+            <h2 style="font-family:var(--serif); font-size:20px; font-weight:700; color:var(--ink); margin-bottom:24px;">Search Corpus</h2>
+            <div class="rp-search-input" style="margin-bottom:24px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute; left:12px; top:50%; transform:translateY(-50%);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" placeholder="Search concepts, provisions…" value="${state.searchQuery}" oninput="state.searchQuery = this.value; renderContent();" style="padding-left:36px;">
+            </div>
+            ${state.searchQuery.trim() === '' ? `
+              <div style="text-align:center; padding:48px 0;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--platinum)" stroke-width="2" style="margin:0 auto 8px;"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+                <p style="font-size:12px; color:var(--dimmer);">Search across your indexed legal corpus by concept, provision, or keyword</p>
+              </div>
+            ` : (() => {
+              const results = SEARCH_CORPUS.filter(r => r.title.toLowerCase().includes(state.searchQuery.toLowerCase()) || r.excerpt.toLowerCase().includes(state.searchQuery.toLowerCase()));
+              return results.length === 0 ? `<p style="text-align:center; padding:24px; color:var(--muted);">No results found</p>` : results.map(r => `
+                <div class="rp-search-result" style="margin-bottom:8px;">
+                  <div class="rs-badges">${typeBadgeHTML(r.type)} <span style="font-size:11px; color:var(--dimmer); font-family:var(--mono);">${r.field}</span></div>
+                  <p class="rs-title">${r.title}</p>
+                  <p class="rs-excerpt">${r.excerpt}</p>
+                </div>
+              `).join('');
+            })()}
+          </div>
+        `;
+      }
+
+      function renderSettingsView() {
+        return `
+          <div style="max-width:720px; margin:0 auto; padding:24px 8px;">
+            <h2 style="font-family:var(--serif); font-size:20px; font-weight:700; color:var(--ink); margin-bottom:24px;">Settings</h2>
+            <p style="font-size:14px; color:var(--muted);">Settings panel — coming in a future release.</p>
+          </div>
+        `;
+      }
+
+      function renderRightSearch() {
+        if (state.searchQuery.trim() === '') {
+          return `
+            <div class="rp-search-input">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" placeholder="Search concepts, provisions…" value="${state.searchQuery}" oninput="state.searchQuery = this.value; render();">
+            </div>
+            <div class="rp-empty">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+              <p>Search across your indexed legal corpus by concept, provision, or keyword</p>
+            </div>
+          `;
+        }
+        const results = SEARCH_CORPUS.filter(r => r.title.toLowerCase().includes(state.searchQuery.toLowerCase()) || r.excerpt.toLowerCase().includes(state.searchQuery.toLowerCase()));
+        return `
+          <div class="rp-search-input">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search concepts, provisions…" value="${state.searchQuery}" oninput="state.searchQuery = this.value; render();">
+          </div>
+          ${results.length === 0 ? '<p style="text-align:center; padding:24px; font-size:13px; color:var(--muted);">No results found</p>' : results.map(r => `
+            <div class="rp-search-result">
+              <div class="rs-badges">${typeBadgeHTML(r.type)} <span style="font-size:11px; color:var(--dimmer); font-family:var(--mono);">${r.field}</span></div>
+              <p class="rs-title">${r.title}</p>
+              <p class="rs-excerpt">${r.excerpt}</p>
+            </div>
+          `).join('')}
+        `;
+      }
+
+      function renderRightConnections() {
+        const doc = state.activeDoc;
+        return `
+          <div>
+            <p class="rp-graph-title">${doc ? doc.short : 'Select a document'} — Connection Map</p>
+            <p class="rp-graph-subtitle">${doc ? doc.connections + ' mapped connections' : 'Open a document to see its knowledge connections'}</p>
+            <div class="rp-graph-svg-wrap">
+              ${miniGraphSVG()}
+            </div>
+            <div class="rp-graph-legend">
+              ${MIFID_FICHE.connections.slice(0, 4).map(c => `
+                <div class="legend-item">
+                  <div class="legend-dot" style="background:${TYPE_COLORS[c.type] || 'var(--slate)'}"></div>
+                  <span class="legend-name">${c.title}</span>
+                  <span class="legend-count">${c.conns}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderRightAlerts() {
+        return `
+          <div class="rp-alerts-header">
+            <span>Update Alerts</span>
+            <button><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Filter</button>
+          </div>
+          ${GEN_ALERTS.map(a => `
+            <div class="rp-alert-card">
+              <div class="ra-top">
+                ${sevBadgeHTML(a.sev)}
+                <span style="font-size:11px; color:var(--dimmer); font-family:var(--mono);">${a.date}</span>
+              </div>
+              <p class="ra-title">${a.title}</p>
+              <p class="ra-meta">${a.doc} · ${a.field}</p>
+            </div>
+          `).join('')}
+        `;
+      }
+
+      // ═══════════════════════════════════════════
+      // MINI GRAPH SVG
+      // ═══════════════════════════════════════════
+      function miniGraphSVG() {
+        const nodes = [
+          { id: 'c',  label: 'MiFID II',       sub: 'Dir. 2014/65/EU', cx: 130, cy: 115, r: 10, color: 'var(--teal)' },
+          { id: 'n1', label: 'MiFIR',          sub: 'Reg. 600/2014',   cx: 130, cy: 32,  r: 6,  color: 'var(--slate)' },
+          { id: 'n2', label: 'ESMA RTS',       sub: '13 standards',    cx: 220, cy: 68,  r: 5,  color: 'var(--slate)' },
+          { id: 'n3', label: 'MiFID I',        sub: 'Dir. 2004/39',    cx: 130, cy: 200, r: 6,  color: '#9b7ac8' },
+          { id: 'n4', label: 'Basel III',      sub: 'BIS Accord',      cx: 38,  cy: 68,  r: 5,  color: '#9b7ac8' },
+          { id: 'n5', label: 'ECJ C-186/18',  sub: 'Soc. Générale',   cx: 38,  cy: 165, r: 5,  color: 'var(--amber)' },
+        ];
+        const edges = [['c','n1'],['c','n2'],['c','n3'],['c','n4'],['c','n5']];
+
+        return `
+          <svg viewBox="0 0 260 232" style="width:100%; height:100%; overflow:visible;">
+            <defs>
+              <filter id="mg-glow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              ${edges.map(([a, b]) => {
+                const na = nodes.find(n => n.id === a);
+                const nb = nodes.find(n => n.id === b);
+                return `<path id="mg-${a}-${b}" d="M ${na.cx} ${na.cy} L ${nb.cx} ${nb.cy}"/>`;
+              }).join('')}
+            </defs>
+
+            ${edges.map(([a, b]) => {
+              const na = nodes.find(n => n.id === a);
+              const nb = nodes.find(n => n.id === b);
+              return `<line x1="${na.cx}" y1="${na.cy}" x2="${nb.cx}" y2="${nb.cy}" stroke="rgba(68,127,128,0.25)" stroke-width="1"/>`;
+            }).join('')}
+
+            ${edges.slice(0, 4).map(([a, b], i) => `
+              <circle r="2" fill="var(--teal)" filter="url(#mg-glow)" opacity="0.85">
+                <animateMotion dur="${2 + i * 0.5}s" repeatCount="indefinite" begin="${i * 0.5}s">
+                  <mpath href="#mg-${a}-${b}"/>
+                </animateMotion>
+              </circle>
+            `).join('')}
+
+            ${nodes.map((node, i) => `
+              <g>
+                <circle cx="${node.cx}" cy="${node.cy}" r="${node.r + 4}" fill="none" stroke="${node.color}" stroke-width="0.6" opacity="0">
+                  <animate attributeName="r" values="${node.r + 3};${node.r + 10}" dur="${2.5 + i * 0.2}s" repeatCount="indefinite" begin="${i * 0.35}s"/>
+                  <animate attributeName="opacity" values="0.35;0" dur="${2.5 + i * 0.2}s" repeatCount="indefinite" begin="${i * 0.35}s"/>
+                </circle>
+                <circle cx="${node.cx}" cy="${node.cy}" r="${node.r}" fill="${node.color}" filter="url(#mg-glow)"/>
+                <text x="${node.cx}" y="${node.cy - node.r - 6}" text-anchor="middle" fill="var(--ink)" font-size="7.5" font-family="var(--sans)" font-weight="500">${node.label}</text>
+                <text x="${node.cx}" y="${node.cy + node.r + 10}" text-anchor="middle" fill="var(--muted)" font-size="6" font-family="var(--mono)">${node.sub}</text>
+              </g>
+            `).join('')}
+          </svg>
+        `;
+      }
+
+      // ═══════════════════════════════════════════
+      // HTML HELPERS
+      // ═══════════════════════════════════════════
+      function typeBadgeHTML(type) {
+        const color = TYPE_COLORS[type] || 'var(--slate)';
+        return `<span class="type-badge" style="background:${color}18; color:${color};">${type}</span>`;
+      }
+
+      function sevBadgeHTML(sev) {
+        const map = {
+          high:   { bg: 'rgba(200,75,75,0.10)',   color: 'var(--red)',   icon: 'alert-triangle' },
+          medium: { bg: 'rgba(196,147,90,0.12)',  color: 'var(--amber)', icon: 'alert-circle' },
+          low:    { bg: 'rgba(99,104,133,0.12)',  color: 'var(--muted)', icon: 'info' },
+        };
+        const { bg, color } = map[sev] || map.low;
+        const icons = {
+          'alert-triangle': '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+          'alert-circle': '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+          'info': '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+        };
+        return `<span class="sev-badge" style="background:${bg}; color:${color};">${icons[map[sev].icon]} ${sev}</span>`;
+      }
+
+      // ═══════════════════════════════════════════
+      // NAVIGATION & STATE
+      // ═══════════════════════════════════════════
+      function navigateTo(nav) {
+        state.activeNav = nav;
+        state.stage = 'upload';
+        state.searchQuery = '';
+        state.expandedProvision = null;
+        render();
+      }
+
+      function setStage(stage) {
+        if (stage === 'processing') return; // Only triggered programmatically
+        if (stage === state.stage) return;
+        state.stage = stage;
+        if (stage === 'fiche' && !state.activeDoc) {
+          state.activeDoc = LIBRARY_DOCS[0];
+          renderSidebarDocs();
+        }
+        render();
+      }
+
+      function setRightTab(tab) {
+        state.rightTab = tab;
+        renderRightPanel();
+        // Update tab active states
+        document.querySelectorAll('#rightPanel .right-panel-tabs button').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.rptab === tab);
+        });
+      }
+
+      function openDocument(docId) {
+        const doc = LIBRARY_DOCS.find(d => d.id === docId);
+        if (!doc) return;
+        state.activeDoc = doc;
+        state.activeNav = 'workspace';
+        state.stage = 'fiche';
+        state.expandedProvision = null;
+        render();
+      }
+
+      function loadMiFIDDemo() {
+        const file = { name: 'Directive_2014_65_EU_MiFID_II.pdf', size: '387 KB', type: 'application/pdf' };
+        startProcessing(file);
+      }
+
+      function simulateFile(name, ext) {
+        const sizes = ['142 KB', '387 KB', '1.2 MB', '2.8 MB', '560 KB'];
+        const file = {
+          name: name,
+          size: sizes[Math.floor(Math.random() * sizes.length)],
+          type: ext === 'pdf' ? 'application/pdf' : ext === 'txt' ? 'text/plain' : 'text/html',
+        };
+        startProcessing(file);
+      }
+
+      function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file) simulateFile(file.name, file.name.split('.').pop());
+        event.target.value = '';
+      }
+
+      function startProcessing(file) {
+        state.stage = 'processing';
+        state.progress = 0;
+        state.phase = 0;
+        if (state.progressInterval) clearInterval(state.progressInterval);
+
+        // Show file preview briefly (we'll just render processing directly)
+        render();
+
+        state.progressInterval = setInterval(() => {
+          state.progress = Math.min(state.progress + 1.4, 100);
+          state.phase = Math.floor(state.progress / 20);
+          renderContent();
+          if (state.progress >= 100) {
+            clearInterval(state.progressInterval);
+            state.progressInterval = null;
+            setTimeout(() => {
+              state.stage = 'fiche';
+              state.activeDoc = LIBRARY_DOCS[0];
+              render();
+            }, 600);
+          }
+        }, 60);
+      }
+
+      function openMobileSidebar() {
+        const overlay = document.getElementById('mobileOverlay');
+        const container = document.getElementById('mobileSidebarContainer');
+        if (overlay && container) {
+          // Clone sidebar content
+          const desktopSidebar = document.getElementById('sidebarDesktop');
+          if (desktopSidebar) {
+            container.innerHTML = desktopSidebar.innerHTML;
+            // Rebind sidebar doc clicks inside mobile
+            container.querySelectorAll('.sidebar-doc').forEach(btn => {
+              btn.onclick = function() {
+                const docId = LIBRARY_DOCS.find(d => d.short === this.querySelector('.doc-name').textContent.trim())?.id;
+                if (docId) {
+                  openDocument(docId);
+                  closeMobileSidebar();
+                }
+              };
+            });
+            container.querySelectorAll('.sidebar-nav button').forEach(btn => {
+              btn.onclick = function() {
+                navigateTo(this.dataset.nav);
+                closeMobileSidebar();
+              };
+            });
+          }
+          overlay.classList.add('open');
+        }
+      }
+
+      function closeMobileSidebar() {
+        const overlay = document.getElementById('mobileOverlay');
+        if (overlay) overlay.classList.remove('open');
+      }
+
+      // ═══════════════════════════════════════════
+      // INIT
+      // ═══════════════════════════════════════════
+      function init() {
+        render();
+      }
+
+      document.addEventListener('DOMContentLoaded', init);
+    </script>
+  </body>
+</html>
