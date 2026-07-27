@@ -388,8 +388,130 @@
         color: var(--atlantic);
       }
 
+
+      .review-panel {
+        margin-top: 18px;
+        border: 1px solid rgba(181, 138, 58, 0.45);
+        border-left: 4px solid var(--champagne);
+        background: var(--panel-bg);
+        border-radius: 8px;
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+
+      .review-panel[hidden] {
+        display: none;
+      }
+
+      .review-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+      }
+
+      .review-header h4 {
+        margin: 0;
+        font-family: var(--serif-display);
+        font-size: 22px;
+        font-weight: 500;
+        color: var(--navy);
+      }
+
+      .review-header p {
+        margin: 6px 0 0;
+        color: var(--graphite);
+      }
+
+      .confidence-badge {
+        border: 1px solid var(--stone-grey);
+        border-radius: 8px;
+        padding: 8px 10px;
+        color: var(--navy);
+        background: #FFF4DC;
+        font-family: var(--mono-ref);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .type-options {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin: 14px 0;
+      }
+
+      .type-option {
+        border: 1px solid var(--stone-grey);
+        background: #fff;
+        border-radius: 8px;
+        padding: 11px;
+        cursor: pointer;
+        text-align: left;
+        color: var(--ink);
+      }
+
+      .type-option:hover,
+      .type-option.active {
+        border-color: var(--champagne);
+        background: #FFF4DC;
+      }
+
+      .type-option strong,
+      .type-option span {
+        display: block;
+      }
+
+      .type-option span {
+        margin-top: 4px;
+        color: var(--graphite);
+        font-family: var(--mono-ref);
+        font-size: 12px;
+      }
+
+      .signal-list {
+        margin: 10px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 7px;
+      }
+
+      .signal-list li {
+        border: 1px solid var(--stone-grey);
+        border-radius: 8px;
+        padding: 9px;
+        color: var(--graphite);
+        background: #fff;
+      }
+
+      .review-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .ghost-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        border-radius: 8px;
+        padding: 10px 18px;
+        font-size: 14px;
+        font-weight: 500;
+        font-family: var(--sans-ui);
+        cursor: pointer;
+        border: 1px solid var(--stone-grey);
+        background: #fff;
+        color: var(--navy);
+      }
+
       /* ═══════════ CORPUS GRID ═══════════ */
-      .corpus-grid {
+      .corpus-grid,
+      .type-options {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 14px;
@@ -707,13 +829,39 @@
                   <span>Accepted long-term: PDF, TXT, HTML, DOCX. First production target: official HTML when available, because it preserves legal structure better than PDFs.</span>
                   <div class="file-status" id="fileStatus">No file selected.</div>
                 </div>
+                
                 <label class="file-input button">
                   Choose file
                   <input id="fileInput" type="file" accept=".pdf,.txt,.html,.htm,.docx">
-                </label>
+                </label> 
               </div>
+
+     <section class="review-panel" id="reviewPanel" hidden aria-live="polite">
+                <div class="review-header">
+                  <div>
+                    <p class="eyebrow">Document Type Review</p>
+                    <h4 id="reviewTitle">Confirm document type</h4>
+                    <p id="reviewSummary">ATLAS needs your confirmation before parsing.</p>
+                  </div>
+                  <div class="confidence-badge" id="confidenceBadge">0%</div>
+                </div>
+
+                <div class="type-options" id="typeOptions"></div>
+
+                <p class="eyebrow">Signals Used</p>
+                <ul class="signal-list" id="signalList"></ul>
+
+                <div class="review-actions">
+                  <button class="button" id="confirmTypeButton" type="button">Confirm type</button>
+                  <button class="ghost-button" id="dismissReviewButton" type="button">Cancel review</button>
+                </div>
+              </section>
             </section>
 
+
+
+
+            
             <!-- Corpus Library -->
             <section class="panel" style="margin-top:20px;">
               <p class="eyebrow">Corpus Library</p>
@@ -826,17 +974,75 @@
       </main>
     </div>
 
+    <script src="data/pipeline/extractor.js"></script>
+    <script src="data/pipeline/document-detector.js"></script>
     <script>
       const fileInput = document.getElementById("fileInput");
       const fileStatus = document.getElementById("fileStatus");
       const search = document.getElementById("workspaceSearch");
       const cards = Array.from(document.querySelectorAll("[data-search]"));
+      const reviewPanel = document.getElementById("reviewPanel");
+      const reviewTitle = document.getElementById("reviewTitle");
+      const reviewSummary = document.getElementById("reviewSummary");
+      const confidenceBadge = document.getElementById("confidenceBadge");
+      const typeOptions = document.getElementById("typeOptions");
+      const signalList = document.getElementById("signalList");
+      const confirmTypeButton = document.getElementById("confirmTypeButton");
+      const dismissReviewButton = document.getElementById("dismissReviewButton");
+      const documentTypeChoices = [
+        { type: "constitution", label: "Constitution", parser: "constitution-parser.js" },
+        { type: "regulation", label: "Regulation", parser: "regulation-parser.js" },
+        { type: "directive", label: "Directive", parser: "directive-parser.js" },
+        { type: "treaty", label: "Treaty", parser: "treaty-parser.js" },
+        { type: "statute", label: "Statute / Act", parser: "statute-parser.js" },
+        { type: "judgment", label: "Judgment", parser: "judgment-parser.js" },
+        { type: "contract", label: "Contract", parser: "contract-parser.js" },
+        { type: "unknown", label: "Generic / Unknown", parser: "generic-parser.js" }
+      ];
+      let pendingDetection = null;
+      let selectedType = null;
 
-      fileInput.addEventListener("change", event => {
+     // fileInput.addEventListener("change", event => {
+     fileInput.addEventListener("change", async event => {
+
         const file = event.target.files[0];
-        fileStatus.textContent = file
-          ? `${file.name} selected. Ingestion pipeline not connected yet.`
-          : "No file selected.";
+
+       // fileStatus.textContent = file
+       //   ? `${file.name} selected. Ingestion pipeline not connected yet.` : "No file selected.";
+        hideReview();
+
+        if (!file) {
+          fileStatus.textContent = "No file selected.";
+          return;
+        }
+
+        fileStatus.textContent = `${file.name} selected. Extracting text and detecting document type...`;
+
+        try {
+          if (!window.ATLAS_Extractor || !window.ATLAS_DocumentDetector) {
+            throw new Error("ATLAS ingestion modules are not loaded.");
+          }
+
+          const extraction = await window.ATLAS_Extractor.extract(file);
+          const detection = window.ATLAS_DocumentDetector.detect(extraction);
+
+          pendingDetection = {
+            extraction,
+            detection,
+            confirmed: detection.decision === "auto",
+            confirmedType: detection.decision === "auto" ? detection.type : null
+          };
+
+          if (detection.decision === "auto") {
+            fileStatus.textContent = `${file.name} detected as ${detection.label} (${detection.confidence}% confidence). Ready for parser handoff.`;
+            showReview(detection, true);
+          } else {
+            fileStatus.textContent = `${file.name} needs document-type confirmation before parsing.`;
+            showReview(detection, false);
+          }
+        } catch (error) {
+          fileStatus.textContent = error.message;
+        }
       });
 
       search.addEventListener("input", event => {
@@ -845,7 +1051,98 @@
           const haystack = `${card.textContent} ${card.dataset.search}`.toLowerCase();
           card.style.display = haystack.includes(query) ? "" : "none";
         });
+
+      confirmTypeButton.addEventListener("click", () => {
+        if (!pendingDetection || !selectedType) return;
+        });
+        
+        const choice = documentTypeChoices.find(item => item.type === selectedType);
+        pendingDetection.confirmed = true;
+        pendingDetection.confirmedType = selectedType;
+        pendingDetection.confirmedParser = choice ? choice.parser : "generic-parser.js";
+        pendingDetection.detection = {
+          ...pendingDetection.detection,
+          type: selectedType,
+          label: choice ? choice.label : "Generic / Unknown",
+          parser: choice ? choice.parser : "generic-parser.js",
+          decision: "user-confirmed",
+          confirmedByUser: true
+        };
+
+        fileStatus.textContent = `Confirmed as ${pendingDetection.detection.label}. Parser handoff: ${pendingDetection.detection.parser}.`;
+        reviewSummary.textContent = "Document type confirmed. The next pipeline step can safely call the matching parser.";
       });
+
+      dismissReviewButton.addEventListener("click", () => {
+        hideReview();
+        if (pendingDetection && pendingDetection.extraction) {
+          fileStatus.textContent = `${pendingDetection.extraction.filename} selected. Review cancelled; parsing is paused.`;
+        }
+      });
+
+      function showReview(detection, autoAccepted) {
+        selectedType = detection.type === "unknown" && detection.candidate ? detection.candidate : detection.type;
+        if (!documentTypeChoices.some(item => item.type === selectedType)) {
+          selectedType = "unknown";
+        }
+
+        reviewPanel.hidden = false;
+        reviewTitle.textContent = autoAccepted ? "ATLAS auto-detected the document type" : "Confirm document type before parsing";
+        reviewSummary.textContent = autoAccepted
+          ? `${detection.label} was selected automatically. You can still override it before parser handoff.`
+          : "ATLAS found ambiguity. Choose the correct type so the parser does not start from a wrong assumption.";
+        confidenceBadge.textContent = `${detection.confidence || 0}% confidence`;
+
+        renderTypeOptions(detection);
+        renderSignals(detection);
+      }
+
+      function renderTypeOptions(detection) {
+        const scoreByType = new Map((detection.allScores || []).map(score => [score.type, score.score]));
+        typeOptions.innerHTML = documentTypeChoices.map(choice => {
+          const score = scoreByType.has(choice.type) ? `${scoreByType.get(choice.type)} score` : "manual choice";
+          const active = choice.type === selectedType ? " active" : "";
+          return `
+            <button class="type-option${active}" type="button" data-type="${choice.type}">
+              <strong>${choice.label}</strong>
+              <span>${score}</span>
+            </button>
+          `;
+        }).join("");
+
+        typeOptions.querySelectorAll("[data-type]").forEach(button => {
+          button.addEventListener("click", () => {
+            selectedType = button.dataset.type;
+            typeOptions.querySelectorAll("[data-type]").forEach(item => {
+              item.classList.toggle("active", item === button);
+            });
+          });
+        });
+      }
+
+      function renderSignals(detection) {
+        const signals = (detection.signals || []).slice(0, 5);
+        if (signals.length === 0) {
+          signalList.innerHTML = `<li>No strong signals found. Manual confirmation is required.</li>`;
+          return;
+        }
+
+        signalList.innerHTML = signals.map(signal => `
+          <li>
+            <strong>${signal.description || "Matched signal"}</strong>
+            <span>${signal.docLabel || signal.docType} · weight ${signal.weight} · ${signal.matchCount || 1} match(es)</span>
+          </li>
+        `).join("");
+      }
+
+      function hideReview() {
+        reviewPanel.hidden = true;
+        pendingDetection = null;
+        selectedType = null;
+        typeOptions.innerHTML = "";
+        signalList.innerHTML = "";
+      }
+        
     </script>
   </body>
 </html>
