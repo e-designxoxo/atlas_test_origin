@@ -7,7 +7,9 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+ <!--  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"> -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/atlas.css">
 
     <style>
 
@@ -15,6 +17,7 @@
      DESIGN TOKENS  ── change only these to restyle everything
      ═══════════════════════════════════════════════════════════════ */
       :root {
+       /* ===================== COLORS BEFORE NEW CSS ==============
         --cream: #F7F4EE;
         --teal: #447F80;
         --teal-dark: #335F60;
@@ -32,15 +35,39 @@
         --border: #DAD8E1;
         --card: #FFFFFF;
         --amber: #C4935A;
+        */
+         --cream: #F4EEE5;
+        --teal: #4E7082;
+        --teal-dark: #103442;
+        --teal-fade: rgba(78,112,130,0.10);
+        --slate: #395868;
+        --navy: #103442;
+        --navy-mid: #395868;
+        --navy-hi: #4E7082;
+        --platinum: #DADCE1;
+        --glacier: #BCDCE3;
+        --glacier-fade: rgba(188,220,227,0.26);
+        --ink: #161923;
+        --muted: #667085;
+        --dimmer: #8B92A1;
+        --border: #DADCE1;
+        --card: #F7F9FA;
+        --amber: #B58A3A;
         --red: #C84B4B;
         --green: #4A9B6A;
-  /* Typography */
-        --serif: 'Playfair Display', serif;
+        
+  /*    --serif: 'Playfair Display', serif;
         --sans: 'DM Sans', sans-serif;
-        --mono: 'JetBrains Mono', monospace;
-      }
+        --mono: 'JetBrains Mono', monospace; */
 
+/*  ===================== NEW TYPOGRAPHY  ============================ */
+        --serif: 'Cormorant Garamond', 'Times New Roman', Times, serif;
+        --sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+        --mono: 'IBM Plex Mono', ui-monospace, monospace;  
+      }
+      
       * { box-sizing: border-box; margin: 0; padding: 0; }
+      
 
       body {
         font-family: var(--sans);
