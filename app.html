@@ -7,7 +7,6 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
- <!--  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"> -->
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/atlas.css">
 
@@ -17,26 +16,7 @@
      DESIGN TOKENS  ── change only these to restyle everything
      ═══════════════════════════════════════════════════════════════ */
       :root {
-       /* ===================== COLORS BEFORE NEW CSS ==============
-        --cream: #F7F4EE;
-        --teal: #447F80;
-        --teal-dark: #335F60;
-        --teal-fade: rgba(68,127,128,0.10);
-        --slate: #636885;
-        --navy: #141928;
-        --navy-mid: #1D2640;
-        --navy-hi: #26304E;
-        --platinum: #DAD8E1;
-        --glacier: #B0B8E1;
-        --glacier-fade: rgba(176,184,225,0.18);
-        --ink: #1A1C2E;
-        --muted: #636885;
-        --dimmer: #9196AE;
-        --border: #DAD8E1;
-        --card: #FFFFFF;
-        --amber: #C4935A;
-        */
-         --cream: #F4EEE5;
+        --cream: #F4EEE5;
         --teal: #4E7082;
         --teal-dark: #103442;
         --teal-fade: rgba(78,112,130,0.10);
@@ -55,19 +35,13 @@
         --amber: #B58A3A;
         --red: #C84B4B;
         --green: #4A9B6A;
-        
-  /*    --serif: 'Playfair Display', serif;
-        --sans: 'DM Sans', sans-serif;
-        --mono: 'JetBrains Mono', monospace; */
-
-/*  ===================== NEW TYPOGRAPHY  ============================ */
+  /* Typography */
         --serif: 'Cormorant Garamond', 'Times New Roman', Times, serif;
         --sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-        --mono: 'IBM Plex Mono', ui-monospace, monospace;  
+        --mono: 'IBM Plex Mono', ui-monospace, monospace;
       }
-      
+
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      
 
       body {
         font-family: var(--sans);
@@ -1730,7 +1704,6 @@
     <script src="data/pipeline/extractor.js"></script>
     <script src="data/pipeline/document-detector.js"></script>
     <script src="data/pipeline/parsers/parser-core.js"></script>
-    <!-- <script src="data/pipeline/parsers/_core.js"></script> -->
     <script src="data/pipeline/parsers/constitution-parser.js"></script>
     <script src="data/pipeline/parsers/regulation-parser.js"></script>
     <script src="data/pipeline/parsers/directive-parser.js"></script>
@@ -2602,15 +2575,6 @@
           });
 
           state.currentPipelineResult = result;
-
-          if (result.status === 'failed') {
-            state.stage = 'upload';
-            state.statusMessage = result.error || 'ATLAS could not process this file.';
-            render();
-            alert(`ATLAS could not process this file: ${result.error || 'unknown pipeline error.'}`);
-            return;
-          }
-
           state.currentFiche = adaptPipelineFiche(result);
           state.activeDoc = {
             id: result.fiche.document.id || 'uploaded-document',
