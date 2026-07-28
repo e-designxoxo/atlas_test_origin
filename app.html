@@ -2574,6 +2574,15 @@
           });
 
           state.currentPipelineResult = result;
+
+          if (result.status === 'failed') {
+            state.stage = 'upload';
+            state.statusMessage = result.error || 'ATLAS could not process this file.';
+            render();
+            alert(`ATLAS could not process this file: ${result.error || 'unknown pipeline error.'}`);
+            return;
+          }
+
           state.currentFiche = adaptPipelineFiche(result);
           state.activeDoc = {
             id: result.fiche.document.id || 'uploaded-document',
