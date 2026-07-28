@@ -1698,7 +1698,21 @@
     </div>
 
     <!-- Hidden file input -->
-    <input type="file" accept=".pdf,.txt,.html" class="hidden-input" id="hiddenFileInput" onchange="handleFileSelect(event)">
+    <input type="file" accept=".txt,.html,.htm" class="hidden-input" id="hiddenFileInput" onchange="handleFileSelect(event)">
+
+    <script src="data/pipeline/extractor.js"></script>
+    <script src="data/pipeline/document-detector.js"></script>
+    <script src="data/pipeline/parsers/_core.js"></script>
+    <script src="data/pipeline/parsers/constitution-parser.js"></script>
+    <script src="data/pipeline/parsers/regulation-parser.js"></script>
+    <script src="data/pipeline/parsers/directive-parser.js"></script>
+    <script src="data/pipeline/parsers/treaty-parser.js"></script>
+    <script src="data/pipeline/parsers/statute-parser.js"></script>
+    <script src="data/pipeline/parsers/judgment-parser.js"></script>
+    <script src="data/pipeline/parsers/contract-parser.js"></script>
+    <script src="data/pipeline/parsers/generic-parser.js"></script>
+    <script src="data/pipeline/fiche-generator.js"></script>
+    <script src="data/pipeline/pipeline.js"></script>
 
     <script>
       // ═══════════════════════════════════════════
@@ -1711,6 +1725,9 @@
         treaty: '#7A6AAA',
         instrument: '#4A9B6A',
         statute: '#C4935A',
+        constitution: '#7A6AAA',
+        contract: '#4A9B6A',
+        unknown: '#636885',
       };
 
       const LIBRARY_DOCS = [
@@ -1810,6 +1827,9 @@
         progress: 0,
         phase: 0,
         progressInterval: null,
+        currentFiche: null,
+        currentPipelineResult: null,
+        statusMessage: '',
       };
 
       // ═══════════════════════════════════════════
@@ -1942,7 +1962,7 @@
             e.preventDefault();
             this.classList.remove('drag-active');
             const file = e.dataTransfer.files[0];
-            if (file) simulateFile(file.name, file.name.split('.').pop());
+            if (file) processUploadedFile(file);
           });
           dropZone.addEventListener('click', function() {
             document.getElementById('hiddenFileInput').click();
@@ -1963,22 +1983,22 @@
               </div>
               <div>
                 <h3>Drop a legal document here</h3>
-                <p style="font-size:13px; color:var(--muted); margin-top:4px;">Accepts PDF, TXT, HTML — legislation, judgments, directives, reports</p>
+                <p style="font-size:13px; color:var(--muted); margin-top:4px;">Accepts TXT and official HTML in V1 — legislation, judgments, directives, constitutions</p>
               </div>
               <div class="ext-row">
-                <span class="ext-badge">.pdf</span>
                 <span class="ext-badge">.txt</span>
                 <span class="ext-badge">.html</span>
               </div>
               <button class="btn-select">Select File</button>
             </div>
-            <p class="demo-link">Or <button onclick="loadMiFIDDemo()">load the MiFID II demo</button> to see a full analysis fiche</p>
+            <p class="demo-link">Or <button onclick="loadMiFIDDemo()">load the MiFID II demo</button> to see a sample fiche</p>
           </div>
         `;
       }
 
       function renderProcessingView() {
         const dashOffset = 301.5 - (state.progress * 3.015);
+        const phaseText = state.statusMessage || PROC_STEPS[Math.min(state.phase, PROC_STEPS.length - 1)];
         return `
           <div class="processing-container">
             <div class="processing-orb">
@@ -1999,7 +2019,7 @@
               </svg>
             </div>
             <div class="processing-phase">
-              <h3>${PROC_STEPS[Math.min(state.phase, PROC_STEPS.length - 1)]}</h3>
+              <h3>${phaseText}</h3>
               <p>ATLAS is building your legal knowledge fiche</p>
             </div>
             <div class="processing-steps">
@@ -2021,14 +2041,14 @@
       }
 
       function renderFiche() {
-        const f = MIFID_FICHE;
+        const f = state.currentFiche || MIFID_FICHE;
         return `
           <div class="fiche-container">
             <!-- Header -->
             <div class="fiche-header">
               <div class="fh-top">
                 <div class="fh-badges">
-                  ${typeBadgeHTML(f.docType.toLowerCase().includes('directive') ? 'directive' : 'regulation')}
+                  ${typeBadgeHTML(f.type || (f.docType.toLowerCase().includes('directive') ? 'directive' : 'regulation'))}
                   <span class="status-badge" style="background:rgba(74,155,106,0.12); color:var(--green);">● ${f.status}</span>
                 </div>
                 <div class="fh-actions">
@@ -2275,6 +2295,7 @@
 
       function renderRightConnections() {
         const doc = state.activeDoc;
+        const f = state.currentFiche || MIFID_FICHE;
         return `
           <div>
             <p class="rp-graph-title">${doc ? doc.short : 'Select a document'} — Connection Map</p>
@@ -2283,7 +2304,7 @@
               ${miniGraphSVG()}
             </div>
             <div class="rp-graph-legend">
-              ${MIFID_FICHE.connections.slice(0, 4).map(c => `
+              ${f.connections.slice(0, 4).map(c => `
                 <div class="legend-item">
                   <div class="legend-dot" style="background:${TYPE_COLORS[c.type] || 'var(--slate)'}"></div>
                   <span class="legend-name">${c.title}</span>
@@ -2391,6 +2412,68 @@
         return `<span class="sev-badge" style="background:${bg}; color:${color};">${icons[map[sev].icon]} ${sev}</span>`;
       }
 
+      function adaptPipelineFiche(result) {
+        const fiche = result.fiche;
+        const doc = fiche.document || {};
+        const metadata = doc.metadata || {};
+        const provisions = (fiche.provisions || []).slice(0, 12).map((provision, index) => ({
+          art: provision.identifier ? `${provision.type} ${provision.identifier}` : provision.type || `Node ${index + 1}`,
+          title: provision.heading || provision.citation || `Provision ${index + 1}`,
+          detail: provision.content || provision.preview || ''
+        }));
+        const references = [
+          ...((fiche.connections && fiche.connections.internal) || []),
+          ...((fiche.connections && fiche.connections.external) || [])
+        ];
+        const warnings = result.warnings || (fiche.quality && fiche.quality.warnings) || [];
+        const timeline = (fiche.timeline || []).map(item => ({
+          year: (String(item.date || '').match(/\b\d{4}\b/) || [item.label || 'Date'])[0],
+          text: item.description || item.label || item.type || ''
+        }));
+
+        return {
+          docType: doc.label || metadata.documentTypeLabel || 'Legal Document',
+          type: doc.type || metadata.documentType || 'unknown',
+          ref: metadata.regulationNumber || metadata.directiveNumber || metadata.caseNumber || metadata.actNumber || doc.id || 'Imported source',
+          fullTitle: metadata.title || doc.filename || 'Imported legal document',
+          short: metadata.shortTitle || metadata.title || doc.filename || 'Imported',
+          jurisdiction: metadata.jurisdiction || 'Unknown',
+          body: metadata.body || metadata.court || metadata.institution || 'Source document',
+          dateAdopted: metadata.adoptionDate || metadata.signatureDate || 'Unknown',
+          dateForce: metadata.dateForce || metadata.entryIntoForce || 'Unknown',
+          field: metadata.field || 'Legal source',
+          status: (doc.status && doc.status.label) || 'Parsed',
+          amendedBy: ((fiche.amendmentTracker && fiche.amendmentTracker.amendments) || []).map(item => item.heading),
+          summary: (fiche.summary && (fiche.summary.full || fiche.summary.short)) || 'ATLAS generated a source-grounded fiche from the uploaded document.',
+          provisions: provisions.length ? provisions : [{
+            art: 'RAW',
+            title: 'Raw imported text',
+            detail: 'ATLAS did not find enough structure to create provision-level cards.'
+          }],
+          concepts: Object.keys(fiche.conceptIndex || {}).slice(0, 18),
+          connections: references.slice(0, 8).map((reference, index) => ({
+            title: reference.targetHeading || reference.targetIdentifier || reference.targetId || `Reference ${index + 1}`,
+            type: reference.resolved ? (doc.type || 'unknown') : 'unknown',
+            rel: reference.resolved ? 'Internal reference' : 'External / unresolved',
+            conns: 1
+          })),
+          alerts: warnings.slice(0, 5).map(warning => ({
+            date: 'Review',
+            sev: 'medium',
+            title: warning.code || 'Pipeline warning',
+            text: warning.message || String(warning)
+          })),
+          jurisdictions: [{
+            code: String(metadata.jurisdiction || 'N/A').slice(0, 3).toUpperCase(),
+            name: metadata.jurisdiction || 'Unknown',
+            authority: metadata.body || metadata.court || 'Not detected',
+            impl: 'Imported source',
+            status: (doc.status && doc.status.label) || 'Parsed'
+          }],
+          timeline: timeline.length ? timeline : [{ year: 'Now', text: 'Document imported into ATLAS workspace.' }]
+        };
+      }
+
       // ═══════════════════════════════════════════
       // NAVIGATION & STATE
       // ═══════════════════════════════════════════
@@ -2434,29 +2517,81 @@
 
       function loadMiFIDDemo() {
         const file = { name: 'Directive_2014_65_EU_MiFID_II.pdf', size: '387 KB', type: 'application/pdf' };
+        state.currentFiche = null;
+        state.currentPipelineResult = null;
         startProcessing(file);
       }
 
       function simulateFile(name, ext) {
-        const sizes = ['142 KB', '387 KB', '1.2 MB', '2.8 MB', '560 KB'];
-        const file = {
-          name: name,
-          size: sizes[Math.floor(Math.random() * sizes.length)],
-          type: ext === 'pdf' ? 'application/pdf' : ext === 'txt' ? 'text/plain' : 'text/html',
-        };
-        startProcessing(file);
+        state.statusMessage = `${name} selected. Use a real File object for ingestion.`;
+        render();
       }
 
       function handleFileSelect(event) {
         const file = event.target.files[0];
-        if (file) simulateFile(file.name, file.name.split('.').pop());
+        if (file) processUploadedFile(file);
         event.target.value = '';
+      }
+
+      async function processUploadedFile(file) {
+        if (!window.ATLAS_Pipeline) {
+          state.statusMessage = 'ATLAS pipeline scripts are not loaded.';
+          state.stage = 'upload';
+          render();
+          return;
+        }
+
+        state.stage = 'processing';
+        state.progress = 0;
+        state.phase = 0;
+        state.statusMessage = `Preparing ${file.name}`;
+        state.currentFiche = null;
+        state.currentPipelineResult = null;
+        state.activeDoc = null;
+        if (state.progressInterval) clearInterval(state.progressInterval);
+        render();
+
+        try {
+          const result = await window.ATLAS_Pipeline.process(file, {
+            onProgress(progress) {
+              state.progress = progress.progress || state.progress;
+              state.phase = Math.min(PROC_STEPS.length - 1, Math.floor(state.progress / 20));
+              state.statusMessage = progress.detail || progress.stageLabel;
+              renderContent();
+            }
+          });
+
+          state.currentPipelineResult = result;
+          state.currentFiche = adaptPipelineFiche(result);
+          state.activeDoc = {
+            id: result.fiche.document.id || 'uploaded-document',
+            title: state.currentFiche.fullTitle,
+            short: state.currentFiche.short,
+            type: state.currentFiche.type,
+            field: state.currentFiche.field,
+            date: state.currentFiche.dateAdopted,
+            connections: state.currentFiche.connections.length,
+            alerts: state.currentFiche.alerts.length,
+            status: state.currentFiche.status
+          };
+          state.progress = 100;
+          state.phase = PROC_STEPS.length - 1;
+          state.statusMessage = 'Fiche generated';
+          state.stage = 'fiche';
+          render();
+        } catch (error) {
+          state.stage = 'upload';
+          state.statusMessage = error.message;
+          render();
+          alert(`ATLAS could not process this file: ${error.message}`);
+        }
       }
 
       function startProcessing(file) {
         state.stage = 'processing';
         state.progress = 0;
         state.phase = 0;
+        state.statusMessage = `Loading ${file.name}`;
         if (state.progressInterval) clearInterval(state.progressInterval);
 
         // Show file preview briefly (we'll just render processing directly)
@@ -2472,6 +2607,7 @@
             setTimeout(() => {
               state.stage = 'fiche';
               state.activeDoc = LIBRARY_DOCS[0];
+              state.statusMessage = '';
               render();
             }, 600);
           }
