@@ -1698,7 +1698,7 @@
     </div>
 
     <!-- Hidden file input -->
-    <input type="file" accept=".txt,.html,.htm" class="hidden-input" id="hiddenFileInput" onchange="handleFileSelect(event)">
+    <input type="file" accept=".txt,.html,.htm,.pdf,.docx" class="hidden-input" id="hiddenFileInput" onchange="handleFileSelect(event)">
 
     <script src="data/pipeline/extractor.js"></script>
     <script src="data/pipeline/document-detector.js"></script>
@@ -1983,11 +1983,13 @@
               </div>
               <div>
                 <h3>Drop a legal document here</h3>
-                <p style="font-size:13px; color:var(--muted); margin-top:4px;">Accepts TXT and official HTML in V1 — legislation, judgments, directives, constitutions</p>
+                <p style="font-size:13px; color:var(--muted); margin-top:4px;">Accepts TXT and official HTML now. PDF and DOCX are selectable, but need extraction adapters before parsing.</p>
               </div>
-              <div class="ext-row">
+                <div class="ext-row">
+                <span class="ext-badge">.pdf</span>
                 <span class="ext-badge">.txt</span>
                 <span class="ext-badge">.html</span>
+                <span class="ext-badge">.docx</span>
               </div>
               <button class="btn-select">Select File</button>
             </div>
@@ -2534,6 +2536,16 @@
       }
 
       async function processUploadedFile(file) {
+        const extension = file.name.split('.').pop().toLowerCase();
+
+        if (extension === 'pdf' || extension === 'docx') {
+          state.stage = 'upload';
+          state.statusMessage = `${file.name} selected. ${extension.toUpperCase()} upload is visible in V1, but extraction is not connected yet. Use TXT or official HTML for parsing today.`;
+          render();
+          alert(`${extension.toUpperCase()} extraction is not connected yet. For today's pipeline, use TXT or official HTML. The PDF/DOCX adapter is the next ingestion layer.`);
+          return;
+        }
+
         if (!window.ATLAS_Pipeline) {
           state.statusMessage = 'ATLAS pipeline scripts are not loaded.';
           state.stage = 'upload';
