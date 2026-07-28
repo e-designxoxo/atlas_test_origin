@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ATLAS - Understand Law Beyond the Text</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/atlas.css">
+
+    <style>
+      body {
+        min-height: 100vh;
+      }
+
+      .site-shell {
+        min-height: 100vh;
+      }
+
+      .topline {
+        position: fixed;
+        z-index: 10;
+        inset: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 72px;
+        padding: 0 clamp(20px, 5vw, 56px);
+        border-bottom: 1px solid rgba(16, 52, 66, 0.12);
+        background: rgba(244, 238, 229, 0.82);
+        backdrop-filter: blur(16px);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        text-decoration: none;
+      }
+
+      .brand img {
+        width: 34px;
+        height: 34px;
+        object-fit: contain;
+      }
+
+      .brand span {
+        font-size: 20px;
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        color: var(--graphite);
+        font-size: 13px;
+      }
+
+      .nav a {
+        text-decoration: none;
+      }
+
+      .hero {
+        position: relative;
+        min-height: 92vh;
+        display: grid;
+        align-items: center;
+        padding: 110px clamp(20px, 6vw, 72px) 48px;
+        overflow: hidden;
+      }
+
+      .hero-logo {
+        position: absolute;
+        right: clamp(18px, 8vw, 110px);
+        top: 118px;
+        width: min(36vw, 390px);
+        opacity: 0.88;
+        filter: drop-shadow(0 28px 46px rgba(16, 52, 66, 0.16));
+      }
+
+      .knowledge-graph {
+        position: absolute;
+        right: clamp(16px, 5vw, 80px);
+        bottom: 10vh;
+        width: min(44vw, 560px);
+        opacity: 0.72;
+      }
+
+      .hero-copy {
+        position: relative;
+        z-index: 1;
+        max-width: 720px;
+      }
+
+      .hero h1 {
+        margin: 18px 0 18px;
+        font-family: var(--serif);
+        font-size: clamp(56px, 9vw, 124px);
+        font-weight: 500;
+        letter-spacing: 0.18em;
+        line-height: 0.92;
+      }
+
+      .hero h2 {
+        margin: 0;
+        max-width: 620px;
+        font-family: var(--serif);
+        font-size: clamp(32px, 4vw, 58px);
+        font-weight: 500;
+        line-height: 1.05;
+      }
+
+      .hero p {
+        max-width: 560px;
+        margin: 22px 0 30px;
+        color: var(--graphite);
+        font-size: 18px;
+        line-height: 1.7;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .section {
+        padding: 54px clamp(20px, 5vw, 56px);
+        border-top: 1px solid rgba(16, 52, 66, 0.16);
+      }
+
+      .section-grid {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+        gap: 34px;
+        align-items: start;
+      }
+
+      .section h2 {
+        margin: 8px 0 0;
+        font-family: var(--serif);
+        font-size: 40px;
+        font-weight: 500;
+        line-height: 1.05;
+      }
+
+      .section p {
+        color: var(--graphite);
+        line-height: 1.65;
+      }
+
+      .material-grid,
+      .principle-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .material,
+      .principle {
+        min-height: 150px;
+        padding: 18px;
+      }
+
+      .material strong,
+      .principle strong {
+        display: block;
+        margin-bottom: 10px;
+        color: var(--atlas-navy);
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .palette {
+        display: grid;
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .swatch {
+        min-height: 98px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--card);
+      }
+
+      .swatch i {
+        display: block;
+        height: 48px;
+      }
+
+      .swatch span {
+        display: block;
+        padding: 9px;
+        font-family: var(--mono);
+        font-size: 10px;
+        line-height: 1.35;
+      }
+
+      .footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 18px clamp(20px, 5vw, 56px);
+        background: var(--atlas-navy);
+        color: var(--air-white);
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      @media (max-width: 900px) {
+        .nav {
+          display: none;
+        }
+
+        .hero-logo,
+        .knowledge-graph {
+          opacity: 0.18;
+          width: 72vw;
+        }
+
+        .section-grid,
+        .material-grid,
+        .principle-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .palette {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="topline">
+        <a class="brand" href="index.html" aria-label="ATLAS homepage">
+          <img src="assets/main_logo.png" alt="">
+          <span class="atlas-wordmark">ATLAS</span>
+        </a>
+        <nav class="nav" aria-label="Primary">
+          <a href="#materials">Materials</a>
+          <a href="#system">System</a>
+          <a href="app.html">Workspace</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <img class="hero-logo" src="assets/main_logo.png" alt="">
+          <svg class="knowledge-graph" viewBox="0 0 620 360" aria-hidden="true">
+            <g fill="none" stroke="rgba(16,52,66,.18)">
+              <path d="M88 224 202 132 330 184 450 92 540 210"/>
+              <path d="M202 132 252 276 450 92"/>
+              <path d="M88 224 252 276 540 210"/>
+              <path d="M330 184 252 276"/>
+            </g>
+            <g font-family="IBM Plex Mono, monospace" font-size="11" fill="#4F5963">
+              <circle cx="88" cy="224" r="7" fill="#103442"/><text x="104" y="228">LAW</text>
+              <circle cx="202" cy="132" r="9" fill="#B58A3A"/><text x="218" y="136">PEOPLE</text>
+              <circle cx="330" cy="184" r="8" fill="#4E7082"/><text x="346" y="188">EVENTS</text>
+              <circle cx="450" cy="92" r="6" fill="#B58A3A"/><text x="466" y="96">INSTITUTIONS</text>
+              <circle cx="540" cy="210" r="10" fill="#BCDCE3"/><text x="556" y="214">DOCUMENTS</text>
+              <circle cx="252" cy="276" r="6" fill="#395868"/><text x="268" y="280">CONCEPTS</text>
+            </g>
+          </svg>
+          <div class="hero-copy">
+            <p class="atlas-kicker">Knowledge Operating System</p>
+            <h1>ATLAS</h1>
+            <h2>Understand law beyond the text.</h2>
+            <p>ATLAS turns legal sources into structured workspaces: provisions, citations, concepts, relationships, and study paths for international trade, business law, international law, and domestic law.</p>
+            <div class="hero-actions">
+              <a class="atlas-button" href="app.html">Open Workspace</a>
+              <a class="atlas-button secondary" href="#system">View System</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="materials">
+          <div class="section-grid">
+            <div>
+              <p class="atlas-kicker">Materials</p>
+              <h2>Visual Language</h2>
+              <p>Editorial calm, legal precision, and connected knowledge. Warm reading surfaces meet structured blue navigation and brass source accents.</p>
+            </div>
+            <div class="material-grid">
+              <article class="atlas-card material"><strong>Parchment</strong><p>Warm reading background for source-first legal work.</p></article>
+              <article class="atlas-card material"><strong>Glass</strong><p>Transparent hierarchy and focused overlays.</p></article>
+              <article class="atlas-card material"><strong>Brass</strong><p>Authority, provenance, citations, and important anchors.</p></article>
+              <article class="atlas-card material"><strong>Paper</strong><p>Clean cards for documents, provisions, and notes.</p></article>
+              <article class="atlas-card material"><strong>Ink</strong><p>High contrast for legal text and close reading.</p></article>
+              <article class="atlas-card material"><strong>Stone</strong><p>Quiet borders, dividers, and structural grounding.</p></article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-grid">
+            <div>
+              <p class="atlas-kicker">Colour Palette</p>
+              <h2>Warmth and Clarity</h2>
+            </div>
+            <div class="palette">
+              <div class="swatch"><i style="background:#103442"></i><span>ATLAS Navy<br>#103442</span></div>
+              <div class="swatch"><i style="background:#395868"></i><span>Observatory<br>#395868</span></div>
+              <div class="swatch"><i style="background:#4E7082"></i><span>Atlantic<br>#4E7082</span></div>
+              <div class="swatch"><i style="background:#BCDCE3"></i><span>Glacier<br>#BCDCE3</span></div>
+              <div class="swatch"><i style="background:#EAF2F5"></i><span>Mist<br>#EAF2F5</span></div>
+              <div class="swatch"><i style="background:#F4EEE5"></i><span>Parchment<br>#F4EEE5</span></div>
+              <div class="swatch"><i style="background:#E8D6C9"></i><span>Archive Sand<br>#E8D6C9</span></div>
+              <div class="swatch"><i style="background:#F7F9FA"></i><span>Air White<br>#F7F9FA</span></div>
+              <div class="swatch"><i style="background:#4F5963"></i><span>Graphite<br>#4F5963</span></div>
+              <div class="swatch"><i style="background:#B58A3A"></i><span>Gold<br>#B58A3A</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="system">
+          <div class="section-grid">
+            <div>
+              <p class="atlas-kicker">Interface Principles</p>
+              <h2>Source First</h2>
+              <p>The workspace must never pretend to reason beyond its sources. It reveals structure, preserves provenance, and makes complexity navigable.</p>
+            </div>
+            <div class="principle-grid">
+              <article class="atlas-card principle"><strong>Traceable</strong><p>Cite sources, anchors, and extraction warnings.</p></article>
+              <article class="atlas-card principle"><strong>Connected</strong><p>Map provisions, concepts, citations, institutions, and events.</p></article>
+              <article class="atlas-card principle"><strong>Progressive</strong><p>Show the document first, then analysis, then learning layers.</p></article>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span>ATLAS</span>
+        <span>Understand Law Beyond The Text.</span>
+        <span>Version 2.0</span>
+      </footer>
+    </div>
+  </body>
+</html>
