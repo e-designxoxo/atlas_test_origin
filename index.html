@@ -661,6 +661,7 @@
           <div class="metric"><span>Seed Articles</span><strong>12</strong></div>
           <div class="metric"><span>Study Modes</span><strong>4</strong></div>
           <div class="metric"><span>Import Types</span><strong>TXT HTML</strong></div>
+          <div class="metric"><span>Import Types</span><strong>TXT HTML PDF</strong></div>
         </section>
 
         <section class="dashboard">
@@ -669,16 +670,19 @@
               <p class="eyebrow">Import Desk</p>
               <h3>Upload legal text or source files</h3>
               <p>This is the right place for `.txt` and official legal `.html` sources. ATLAS extracts structure, preserves source anchors, identifies document type, and creates a first study fiche in the browser.</p>
+              <p>This is the right place for `.txt`, official legal `.html`, and future `.pdf` / `.docx` sources. ATLAS extracts structure, preserves source anchors, identifies document type, and creates a first study fiche in the browser.</p>
 
               <div class="upload-zone">
                 <div>
                   <strong>Drop a legal document into ATLAS</strong>
                   <span>Accepted now: TXT and official HTML. PDF and DOCX are long-term adapter targets.</span>
+                  <span>Accepted now for parsing: TXT and official HTML. PDF and DOCX are visible targets for the next extraction adapter.</span>
                   <div class="file-status" id="fileStatus">No file selected.</div>
                 </div>
                 <label class="file-input button">
                   Choose file
                   <input id="fileInput" type="file" accept=".txt,.html,.htm">
+                  <input id="fileInput" type="file" accept=".txt,.html,.htm,.pdf,.docx">
                 </label>
               </div>
 
