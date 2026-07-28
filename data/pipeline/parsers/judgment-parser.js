@@ -26,7 +26,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function createAtlasJudgmentParser(CORE) {
   "use strict";
 
-  const VERSION = "1.0.0";
+  const VERSION = "1.1.0";
   const DOCUMENT_TYPE = "judgment";
   const MIN_PARAGRAPH_COUNT_WARNING = 2;
 
@@ -95,7 +95,9 @@
       return CORE.createEmptyParseResult({ startedAt, version: VERSION, documentType: DOCUMENT_TYPE, filename: normalized.filename, language, warnings });
     }
 
-    const elements = hydrateInlineParagraphContent(CORE.extractContent(text, rawElements, { emptyThreshold: 5 }));
+    const elements = addJudgmentLinkBacks(
+      hydrateInlineParagraphContent(CORE.extractContent(text, rawElements, { emptyThreshold: 5 }))
+    );
     const paragraphs = elements.filter(element => element.type === "PARA" && !element.isEmpty);
     const hierarchyElements = elements.filter(element => element.type !== "PARA" || element.isEmpty);
     const separateOpinions = detectSeparateOpinions(text, language);
@@ -108,12 +110,17 @@
       JUDGMENT_REFERENCE_PATTERNS[language] || JUDGMENT_REFERENCE_PATTERNS.en,
       { allowedSourceTypes: ["HEADER", "SECT", "PARA", "SUBPARA"], skipNestedContent: false }
     );
+    const citations = extractCitations(text, elements, language);
+    const relations = buildJudgmentRelations(elements, references, citations, disposition, separateOpinions);
 
     if (paragraphs.length < MIN_PARAGRAPH_COUNT_WARNING) {
       warnings.push(CORE.makeWarning("LOW_PARAGRAPH_COUNT", `Only ${paragraphs.length} numbered paragraph(s) were parsed. Source may be incomplete, OCR-damaged, or not a judgment.`));
     }
     if (!metadata.court && !metadata.caseNumber) {
       warnings.push(CORE.makeWarning("WEAK_CASE_METADATA", "No clear court or case number was detected."));
+    }
+    if (!disposition) {
+      warnings.push(CORE.makeWarning("NO_DISPOSITION_DETECTED", "No clear holding, order, or disposition signal was detected."));
     }
 
     return {
@@ -128,6 +135,8 @@
       elements,
       hierarchyTree: CORE.buildHierarchyTree(elements),
       references,
+      citations,
+      relations,
       disposition,
       separateOpinions,
       amendments: [],
@@ -137,6 +146,8 @@
         totalElements: elements.length,
         totalReferences: references.length,
         resolvedReferences: references.filter(reference => reference.resolved).length,
+        citationCount: citations.length,
+        relationCount: relations.length,
         hasPreamble: Boolean(header),
         hasHeader: Boolean(header),
         hasDisposition: Boolean(disposition),
@@ -182,6 +193,9 @@
             heading: trimmed,
             shortTitle: match[2] ? match[2].trim() : null,
             inlineText: match[2] ? match[2].trim() : "",
+            sectionRole: structurePattern.prefix === "SECT" ? classifySectionRole(identifier) : null,
+            parentSectionId: null,
+            parentSectionRole: null,
             content: "",
             isAnnex: false,
             isAmendment: false,
@@ -388,6 +402,165 @@
     });
   }
 
+  function addJudgmentLinkBacks(elements) {
+    let currentSection = null;
+
+    return elements.map(element => {
+      if (element.type === "SECT") {
+        currentSection = element;
+        return {
+          ...element,
+          relationRole: element.sectionRole || classifySectionRole(element.identifier)
+        };
+      }
+
+      if (["PARA", "SUBPARA"].includes(element.type) && currentSection) {
+        return {
+          ...element,
+          parentSectionId: currentSection.canonicalId,
+          parentSectionRole: currentSection.sectionRole || classifySectionRole(currentSection.identifier)
+        };
+      }
+
+      return element;
+    });
+  }
+
+  function classifySectionRole(value) {
+    const text = String(value || "").toLowerCase();
+    if (/fact|background|procedural|history|faits|contexte|sachverhalt|hechos|antecedentes/.test(text)) return "facts";
+    if (/legal\s+context|law|droit|recht/.test(text)) return "legal-context";
+    if (/issue|question|moyen/.test(text)) return "issues";
+    if (/reason|analysis|discussion|finding|motif|gründe|gruende|fundamento|considerando/.test(text)) return "reasoning";
+    if (/conclusion|disposition|holding|order|costs|dispositif|dépens|depens|tenor|fallo|costas/.test(text)) return "disposition";
+    return "section";
+  }
+
+  function extractCitations(text, elements, language) {
+    const citationPatterns = [
+      { regex: /\b(?:Case|CASE)\s+(?:No\.?\s*)?(C-?\d+\/\d+(?:\s*P)?)\b/g, type: "case-citation" },
+      { regex: /\b\[\d{4}\]\s+(?:UKSC|UKHL|UKPC|EWCA|EWHC|USSC|SCC)\s+\d+\b/g, type: "neutral-citation" },
+      { regex: /\b\d+\s+(?:U\.S\.|F\.?\s?Supp\.?|F\.?\s?\d+d|S\.Ct\.)\s+\d+\b/g, type: "reporter-citation" },
+      { regex: /\b(?:Regulation|Directive)\s+\(?(?:EU|EC|EEC)?\)?\s*(?:No\.?\s*)?\d{4}\/\d{1,4}\/?(?:EU|EC|EEC)?\b/gi, type: "eu-law-citation" },
+      { regex: /\b(?:Article|ARTICLE|Art\.?)\s+\d{1,4}[A-Za-z]?\b/g, type: "legal-provision-citation" }
+    ];
+
+    const citations = [];
+
+    for (const pattern of citationPatterns) {
+      let match;
+      while ((match = pattern.regex.exec(text)) !== null) {
+        const sourceElement = findElementAtPosition(elements, match.index);
+        citations.push({
+          id: `CITE-${String(citations.length + 1).padStart(4, "0")}`,
+          type: pattern.type,
+          text: match[0].replace(/\s+/g, " ").trim(),
+          position: match.index,
+          sourceId: sourceElement ? sourceElement.canonicalId : null,
+          sourceType: sourceElement ? sourceElement.type : null,
+          sectionRole: sourceElement ? sourceElement.parentSectionRole || sourceElement.sectionRole || null : null,
+          context: CORE.extractContext(text, match.index, match[0], 120)
+        });
+
+        if (match[0].length === 0) pattern.regex.lastIndex += 1;
+      }
+    }
+
+    return CORE.dedupeBy(citations, citation => `${citation.type}|${citation.text}|${citation.position}`);
+  }
+
+  function findElementAtPosition(elements, position) {
+    const candidates = elements.filter(element =>
+      typeof element.position === "number" &&
+      typeof element.endPosition === "number" &&
+      position >= element.position &&
+      position <= element.endPosition
+    );
+
+    candidates.sort((a, b) => {
+      const spanA = a.endPosition - a.position;
+      const spanB = b.endPosition - b.position;
+      if (spanA !== spanB) return spanA - spanB;
+      return b.level - a.level;
+    });
+
+    return candidates[0] || null;
+  }
+
+  function buildJudgmentRelations(elements, references, citations, disposition, separateOpinions) {
+    const relations = [];
+    const paragraphByRole = new Map();
+
+    for (const element of elements) {
+      if (!["PARA", "SUBPARA"].includes(element.type) || element.isEmpty) continue;
+      const role = element.parentSectionRole || "unclassified";
+      if (!paragraphByRole.has(role)) paragraphByRole.set(role, []);
+      paragraphByRole.get(role).push(element);
+    }
+
+    addRoleRelations(relations, "issues", "reasoning", paragraphByRole, "issue-reasoning-link");
+    addRoleRelations(relations, "reasoning", "disposition", paragraphByRole, "reasoning-disposition-link");
+    addRoleRelations(relations, "facts", "reasoning", paragraphByRole, "facts-reasoning-link");
+
+    for (const reference of references) {
+      relations.push({
+        type: "internal-reference",
+        sourceId: reference.sourceId,
+        targetId: reference.targetCanonicalId,
+        resolved: reference.resolved,
+        referenceType: reference.referenceType,
+        context: reference.context
+      });
+    }
+
+    for (const citation of citations) {
+      relations.push({
+        type: "citation-link",
+        sourceId: citation.sourceId,
+        targetText: citation.text,
+        citationType: citation.type,
+        context: citation.context
+      });
+    }
+
+    if (disposition) {
+      relations.push({
+        type: "document-disposition",
+        sourceId: disposition.canonicalId,
+        targetId: "JUDGMENT_OUTCOME",
+        context: disposition.context
+      });
+    }
+
+    for (const opinion of separateOpinions) {
+      const sourceElement = findElementAtPosition(elements, opinion.position);
+      relations.push({
+        type: "separate-opinion-marker",
+        sourceId: sourceElement ? sourceElement.canonicalId : null,
+        opinionType: opinion.type,
+        heading: opinion.heading,
+        position: opinion.position
+      });
+    }
+
+    return relations;
+  }
+
+  function addRoleRelations(relations, sourceRole, targetRole, paragraphByRole, type) {
+    const sources = paragraphByRole.get(sourceRole) || [];
+    const targets = paragraphByRole.get(targetRole) || [];
+    if (sources.length === 0 || targets.length === 0) return;
+
+    relations.push({
+      type,
+      sourceRole,
+      targetRole,
+      sourceIds: sources.map(element => element.canonicalId),
+      targetIds: targets.map(element => element.canonicalId),
+      confidence: "structural"
+    });
+  }
+
   function summarize(parsed) {
     const parts = [];
     if (parsed.metadata.title) parts.push(parsed.metadata.title);
@@ -396,6 +569,7 @@
     parts.push(`${parsed.stats.totalArticles} paragraph(s)`);
     if (parsed.stats.hasDisposition) parts.push("disposition detected");
     if (parsed.stats.separateOpinionCount > 0) parts.push(`${parsed.stats.separateOpinionCount} separate opinion(s)`);
+    if (parsed.stats.citationCount > 0) parts.push(`${parsed.stats.citationCount} citation(s)`);
     return parts.join(" · ");
   }
 
@@ -411,6 +585,8 @@
     detectParties,
     detectSeparateOpinions,
     detectDisposition,
+    extractCitations,
+    buildJudgmentRelations,
     extractMetadata
   };
 });
