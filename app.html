@@ -773,6 +773,74 @@
       .processing-step .ps-label.active { color: var(--ink); font-weight: 500; }
       .processing-step .ps-label.pending { color: var(--dimmer); }
 
+      /* Error */
+      .error-container {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 64px 8px;
+      }
+
+      .error-panel {
+        border: 1px solid rgba(200,75,75,0.25);
+        border-left: 4px solid var(--red);
+        border-radius: 12px;
+        background: var(--card);
+        padding: 24px;
+      }
+
+      .error-panel h2 {
+        margin: 0 0 8px;
+        color: var(--ink);
+        font-family: var(--serif);
+        font-size: 24px;
+      }
+
+      .error-panel p {
+        color: var(--muted);
+        font-family: var(--sans);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .error-panel code {
+        display: block;
+        margin-top: 16px;
+        border-radius: 8px;
+        background: rgba(200,75,75,0.08);
+        color: var(--red);
+        padding: 12px;
+        white-space: pre-wrap;
+      }
+
+      .error-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .error-actions button {
+        border-radius: 8px;
+        padding: 9px 14px;
+        background: var(--teal);
+        color: #fff;
+        font-family: var(--sans);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .error-actions button.secondary {
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--muted);
+      }
+
+      .error-actions button.secondary {
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--muted);
+      }
+
       /* ═══════════ FICHE ═══════════ */ 
       
                                                               /* ═══════════════════════════════════════════════════════════════
@@ -1831,6 +1899,7 @@
         currentFiche: null,
         currentPipelineResult: null,
         statusMessage: '',
+        error: null,
       };
 
       // ═══════════════════════════════════════════
@@ -1876,6 +1945,7 @@
           if (state.stage === 'upload') main.innerHTML = renderUploadZone();
           else if (state.stage === 'processing') main.innerHTML = renderProcessingView();
           else if (state.stage === 'fiche') main.innerHTML = renderFiche();
+          else if (state.stage === 'error') main.innerHTML = renderErrorView();
         } else if (state.activeNav === 'library') {
           main.innerHTML = renderLibraryView();
         } else if (state.activeNav === 'graph') {
@@ -2038,6 +2108,24 @@
                   </div>
                 `;
               }).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderErrorView() {
+        const error = state.error || {};
+        return `
+          <div class="error-container">
+            <div class="error-panel">
+              <p class="atlas-kicker">Pipeline Review</p>
+              <h2>${error.title || 'ATLAS could not process this document'}</h2>
+              <p>${error.message || 'The ingestion pipeline stopped before a reliable fiche could be generated.'}</p>
+              ${error.detail ? `<code>${error.detail}</code>` : ''}
+              <div class="error-actions">
+                <button type="button" onclick="setStage('upload')">Return to upload</button>
+                <button class="secondary" type="button" onclick="loadMiFIDDemo()">Open demo fiche</button>
+              </div>
             </div>
           </div>
         `;
@@ -2485,6 +2573,7 @@
         state.stage = 'upload';
         state.searchQuery = '';
         state.expandedProvision = null;
+        state.error = null;
         render();
       }
 
@@ -2522,6 +2611,7 @@
         const file = { name: 'Directive_2014_65_EU_MiFID_II.pdf', size: '387 KB', type: 'application/pdf' };
         state.currentFiche = null;
         state.currentPipelineResult = null;
+        state.error = null;
         startProcessing(file);
       }
 
@@ -2540,16 +2630,24 @@
         const extension = file.name.split('.').pop().toLowerCase();
 
         if (extension === 'pdf' || extension === 'docx') {
-          state.stage = 'upload';
           state.statusMessage = `${file.name} selected. ${extension.toUpperCase()} upload is visible in V1, but extraction is not connected yet. Use TXT or official HTML for parsing today.`;
+          state.error = {
+            title: `${extension.toUpperCase()} adapter pending`,
+            message: 'This file type is part of the product roadmap, but the browser extraction adapter is not connected yet.',
+            detail: 'Use TXT or official HTML for parsing today.'
+          };
+          state.stage = 'error';
           render();
-          alert(`${extension.toUpperCase()} extraction is not connected yet. For today's pipeline, use TXT or official HTML. The PDF/DOCX adapter is the next ingestion layer.`);
           return;
         }
 
         if (!window.ATLAS_Pipeline) {
-          state.statusMessage = 'ATLAS pipeline scripts are not loaded.';
-          state.stage = 'upload';
+          state.error = {
+            title: 'Pipeline scripts are not loaded',
+            message: 'The workspace could not find ATLAS_Pipeline on the page.',
+            detail: 'Check that app.html loads all data/pipeline scripts and parser-core.js.'
+          };
+          state.stage = 'error';
           render();
           return;
         }
@@ -2561,6 +2659,7 @@
         state.currentFiche = null;
         state.currentPipelineResult = null;
         state.activeDoc = null;
+        state.error = null;
         if (state.progressInterval) clearInterval(state.progressInterval);
         render();
 
@@ -2575,6 +2674,17 @@
           });
 
           state.currentPipelineResult = result;
+          if (!result || result.status === 'failed') {
+            state.error = {
+              title: 'Pipeline stopped before analysis',
+              message: 'ATLAS did not generate a reliable fiche for this document.',
+              detail: result ? (result.error || (result.warnings || []).map(warning => warning.message).join('\n')) : 'No pipeline result was returned.'
+            };
+            state.stage = 'error';
+            render();
+            return;
+          }
+
           state.currentFiche = adaptPipelineFiche(result);
           state.activeDoc = {
             id: result.fiche.document.id || 'uploaded-document',
@@ -2593,10 +2703,13 @@
           state.stage = 'fiche';
           render();
         } catch (error) {
-          state.stage = 'upload';
-          state.statusMessage = error.message;
+          state.error = {
+            title: 'Unexpected ingestion error',
+            message: 'ATLAS hit an unexpected browser-side exception.',
+            detail: error.message
+          };
+          state.stage = 'error';
           render();
-          alert(`ATLAS could not process this file: ${error.message}`);
         }
       }
 
