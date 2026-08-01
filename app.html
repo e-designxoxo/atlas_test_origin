@@ -1786,6 +1786,7 @@
 
  <!-- ============ TEST FIX - CACHE CLEAN ================= -->
 
+ <!-- ============  FIX 2 - NEW CACHE  ================= 
     <script src="data/pipeline/extractor.js?v=20260730-2"></script>
     <script src="data/pipeline/document-detector.js?v=20260730-2"></script>
     <script src="data/pipeline/parsers/parser-core.js?v=20260730-2"></script>
@@ -1798,7 +1799,24 @@
     <script src="data/pipeline/parsers/contract-parser.js?v=20260730-2"></script>
     <script src="data/pipeline/parsers/generic-parser.js?v=20260730-2"></script>
     <script src="data/pipeline/fiche-generator.js?v=20260730-2"></script>
-    <script src="data/pipeline/pipeline.js?v=20260730-2"></script>
+    <script src="data/pipeline/pipeline.js?v=20260730-2"></script> -->
+
+    <script src="data/pipeline/schema.js?v=20260801-1"></script>
+    <script src="data/pipeline/identifier.js?v=20260801-1"></script>
+    <script src="data/pipeline/validators.js?v=20260801-1"></script>
+    <script src="data/pipeline/extractor.js?v=20260801-1"></script>
+    <script src="data/pipeline/document-detector.js?v=20260801-1"></script>
+    <script src="data/pipeline/parsers/parser-core.js?v=20260801-1"></script>
+    <script src="data/pipeline/parsers/constitution-parser.js?v=20260801-1"></script>
+    <script src="data/pipeline/parsers/regulation-parser.js?v=20260801-1"></script>
+    <script src="data/pipeline/parsers/directive-parser.js?v=20260801-1"></script>
+    <script src="data/pipeline/parsers/treaty-parser.js?v=20260801-1"></script>
+    <script src="data/pipeline/parsers/statute-parser.js?v=20260801-1"></script>
+    <script src="data/pipeline/parsers/judgment-parser.js?v=20260801-1"></script>
+    <script src="data/pipeline/parsers/contract-parser.js?v=20260801-1"></script>
+    <script src="data/pipeline/parsers/generic-parser.js?v=20260801-1"></script>
+    <script src="data/pipeline/fiche-generator.js?v=20260801-1"></script>
+    <script src="data/pipeline/pipeline.js?v=20260801-1"></script>
     
     <script>
       // ═══════════════════════════════════════════
@@ -1895,7 +1913,7 @@
       const PROC_STEPS = [
         'Reading document structure & metadata',
         'Extracting legal provisions & articles',
-        'Cross-referencing 1,247 indexed documents',
+        'Building canonical document identity',
         'Mapping legal connections & relationships',
         'Generating analysis fiche',
       ];
@@ -2524,6 +2542,7 @@
         const fiche = result.fiche;
         const doc = fiche.document || {};
         const metadata = doc.metadata || {};
+        const identity = doc.identity || result.identity || {};
         const provisions = (fiche.provisions || []).slice(0, 12).map((provision, index) => ({
           art: provision.identifier ? `${provision.type} ${provision.identifier}` : provision.type || `Node ${index + 1}`,
           title: provision.heading || provision.citation || `Provision ${index + 1}`,
@@ -2541,13 +2560,14 @@
 
         return {
           docType: doc.label || metadata.documentTypeLabel || 'Legal Document',
-          type: doc.type || metadata.documentType || 'unknown',
-          ref: metadata.regulationNumber || metadata.directiveNumber || metadata.caseNumber || metadata.actNumber || doc.id || 'Imported source',
-          fullTitle: metadata.title || doc.filename || 'Imported legal document',
-          short: metadata.shortTitle || metadata.title || doc.filename || 'Imported',
-          jurisdiction: metadata.jurisdiction || 'Unknown',
-          body: metadata.body || metadata.court || metadata.institution || 'Source document',
-          dateAdopted: metadata.adoptionDate || metadata.signatureDate || 'Unknown',
+          type: identity.documentType || doc.type || metadata.documentType || 'unknown',
+          ref: identity.reference || metadata.regulationNumber || metadata.directiveNumber || metadata.caseNumber || metadata.actNumber || doc.id || 'Imported source',
+          fullTitle: identity.displayTitle || metadata.title || doc.filename || 'Imported legal document',
+          short: identity.shortTitle || metadata.shortTitle || metadata.title || doc.filename || 'Imported',
+          jurisdiction: identity.jurisdiction || metadata.jurisdiction || 'Unknown',
+          body: identity.authority || metadata.body || metadata.court || metadata.institution || 'Source document',
+          dateAdopted: identity.date || metadata.adoptionDate || metadata.signatureDate || 'Unknown',
+          
           dateForce: metadata.dateForce || metadata.entryIntoForce || 'Unknown',
           field: metadata.field || 'Legal source',
           status: (doc.status && doc.status.label) || 'Parsed',
@@ -2573,8 +2593,10 @@
           })),
           jurisdictions: [{
             code: String(metadata.jurisdiction || 'N/A').slice(0, 3).toUpperCase(),
-            name: metadata.jurisdiction || 'Unknown',
-            authority: metadata.body || metadata.court || 'Not detected',
+            name: identity.jurisdiction || metadata.jurisdiction || 'Unknown',
+            authority: identity.authority || metadata.body || metadata.court || 'Not detected',
+            
+            
             impl: 'Imported source',
             status: (doc.status && doc.status.label) || 'Parsed'
           }],
@@ -2643,6 +2665,45 @@
         event.target.value = '';
       }
 
+      function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file) processUploadedFile(file);
+        event.target.value = '';
+      }
+      
+      function checkAtlasRuntime() {
+        const expected = [
+          ["ATLAS_Schema", "data/pipeline/schema.js"],
+          ["ATLAS_Identifier", "data/pipeline/identifier.js"],
+          ["ATLAS_Validators", "data/pipeline/validators.js"],
+          ["ATLAS_Extractor", "data/pipeline/extractor.js"],
+          ["ATLAS_DocumentDetector", "data/pipeline/document-detector.js"],
+          ["ATLAS_ParserCore", "data/pipeline/parsers/parser-core.js"],
+          ["ATLAS_ConstitutionParser", "data/pipeline/parsers/constitution-parser.js"],
+          ["ATLAS_RegulationParser", "data/pipeline/parsers/regulation-parser.js"],
+          ["ATLAS_DirectiveParser", "data/pipeline/parsers/directive-parser.js"],
+          ["ATLAS_TreatyParser", "data/pipeline/parsers/treaty-parser.js"],
+          ["ATLAS_StatuteParser", "data/pipeline/parsers/statute-parser.js"],
+          ["ATLAS_JudgmentParser", "data/pipeline/parsers/judgment-parser.js"],
+          ["ATLAS_ContractParser", "data/pipeline/parsers/contract-parser.js"],
+          ["ATLAS_GenericParser", "data/pipeline/parsers/generic-parser.js"],
+          ["ATLAS_FicheGenerator", "data/pipeline/fiche-generator.js"],
+          ["ATLAS_Pipeline", "data/pipeline/pipeline.js"]
+        ];
+      
+        const missing = expected
+          .filter(([globalName]) => !window[globalName])
+          .map(([globalName, filePath]) => `${globalName} (${filePath})`);
+      
+        return {
+          ready: missing.length === 0,
+          missing,
+          detail: missing.length
+            ? `Missing browser globals:\n${missing.join("\n")}`
+            : "ATLAS browser runtime ready."
+        };
+      }
+
       async function processUploadedFile(file) {
         const extension = file.name.split('.').pop().toLowerCase();
 
@@ -2657,12 +2718,13 @@
           render();
           return;
         }
-
-        if (!window.ATLAS_Pipeline) {
+        
+        const runtime = checkAtlasRuntime();
+        if (!runtime.ready) {
           state.error = {
             title: 'Pipeline scripts are not loaded',
-            message: 'The workspace could not find ATLAS_Pipeline on the page.',
-            detail: 'Check that app.html loads all data/pipeline scripts and parser-core.js.'
+            message: 'The workspace could not find ATLAS_Pipeline on the page.',  // OR message: 'The workspace could not find every required ATLAS module on the page.',//
+            detail: runtime.detail
           };
           state.stage = 'error';
           render();
