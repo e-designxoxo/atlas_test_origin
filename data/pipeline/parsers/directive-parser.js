@@ -21,7 +21,10 @@
     throw new Error("[statute-parser] ATLAS_ParserCore must be loaded before this module.");
   }
 
-  root.ATLAS_StatuteParser = factory(root.ATLAS_ParserCore);
+  const parser = factory(root.ATLAS_ParserCore);
+  root.ATLAS_DirectiveParser = parser;
+  if (root.window) root.window.ATLAS_DirectiveParser = parser;
+
 })(typeof globalThis !== "undefined" ? globalThis : this, function createAtlasStatuteParser(CORE) {
   "use strict";
 
