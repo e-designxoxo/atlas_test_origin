@@ -109,12 +109,19 @@
         signal("article_numbering_constitution", 10, {
           multi: [
             /\bArticle\s+\d{1,3}(er)?\b/gi,
+            /\bArticle\s+[IVXLCDM]{1,8}\b/gi,
             /\bArtikel\s+\d{1,3}\b/gi,
             /\bArtículo\s+\d{1,3}\b/gi
           ],
           minMatches: 5,
           position: "body",
           description: "Multiple article-numbered provisions"
+        }),
+        signal("us_constitution_amendments", 18, {
+          en: /\bAmendment\s+[IVXLCDM]{1,8}\b/gi,
+          minMatches: 5,
+          position: "body",
+          description: "Multiple US-style constitutional amendments"
         }),
         antiSignal("anti_eu_regulation", -42, {
           multi: [
