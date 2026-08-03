@@ -215,8 +215,8 @@
 
     const body = doc.body || doc.documentElement;
     if (!body) {
-      return {
-        extractionMethod: "browser-domparser",
+      return {  
+        extractionMethod: isPdf2Html ? "browser-pdf2html-layout" : "browser-domparser",
         rawText: "",
         sourceUnits: []
       };
@@ -343,9 +343,103 @@
     return dedupeAdjacentUnits(units);
   }
 
-/**
-* Convert plain text into source units by paragraph-like spacing.
-*/
+  /**
+   * pdf2htmlEX creates visual HTML from PDFs: each visible line is usually a
+   * positioned `.t` element, with text sometimes split across nested spans.
+   * Treat it as a layout-derived source, not as official semantic HTML.
+   */
+  function isPdf2HtmlDocument(doc, html) {
+    const generator = doc.querySelector('meta[name="generator"]');
+    const generatorValue = generator ? String(generator.getAttribute("content") || "") : "";
+    if (/pdf2htmlEX/i.test(generatorValue)) return true;
+    if (/Created by pdf2htmlEX/i.test(String(html || "").slice(0, 1000))) return true;
+    return doc.querySelectorAll(".pf .pc .t, .pc .t, .t").length > 20;
+  }
+
+  function pdf2HtmlToSourceUnits(doc, fileInfo, warnings) {
+    const textElements = Array.from(doc.querySelectorAll(".pf .pc .t, .pc .t, .t"));
+    const units = [];
+    let order = 0;
+
+    if (textElements.length === 0) {
+      warnings.push({
+        code: "PDF2HTML_NO_TEXT_LINES",
+        message: "pdf2htmlEX source was detected, but no positioned text lines were found."
+      });
+      return units;
+    }
+
+    warnings.push({
+      code: "PDF2HTML_LAYOUT_SOURCE",
+      message: "Source is pdf2htmlEX layout HTML. ATLAS extracted visible text lines and applied conservative PDF-layout cleanup."
+    });
+
+    for (const element of textElements) {
+      const cleaned = normalizePdfLayoutLine(element.textContent);
+      if (!cleaned || isPdf2HtmlNoise(cleaned)) continue;
+
+      order += 1;
+      units.push({
+        id: `raw-${String(order).padStart(5, "0")}`,
+        order,
+        type: inferTextUnitType(cleaned),
+        text: cleaned,
+        source: {
+          filename: fileInfo.filename,
+          format: "text/html",
+          htmlId: element.id || null,
+          tagName: element.tagName ? element.tagName.toLowerCase() : null,
+          className: typeof element.className === "string" ? element.className || null : null,
+          pageNumber: inferPdf2HtmlPageNumber(element)
+        }
+      });
+    }
+
+    return dedupeAdjacentUnits(units);
+  }
+
+  function inferPdf2HtmlPageNumber(element) {
+    let current = element;
+    while (current && current.nodeType === 1) {
+      if (current.dataset && current.dataset.pageNo) return current.dataset.pageNo;
+      if (current.id && /^pf[0-9a-z]+$/i.test(current.id)) return current.id.replace(/^pf/i, "");
+      current = current.parentElement;
+    }
+    return null;
+  }
+
+  function normalizePdfLayoutLine(text) {
+    return normalizeInlineWhitespace(String(text || "")
+      .replace(/[\uE000-\uF8FF]/g, " ")
+      .replace(/\u00A0/g, " ")
+      .replace(/([A-Z])\s+([a-z])\s+([a-z]{2,})\b/g, "$1$2$3")
+      .replace(/\b([A-Za-z]{3,})\s+([a-z])\b/g, repairSplitWord)
+      .replace(/\b([A-Za-z])\s+([A-Z][a-z]{2,})\b/g, repairLeadingInitialSplit)
+      .replace(/\s+([,.;:!?])/g, "$1"));
+  }
+
+  function repairSplitWord(match, head, tail) {
+    const keepSeparate = new Set(["and", "the", "for", "not", "any", "may", "shall", "which", "who", "when", "where"]);
+    if (keepSeparate.has(String(head || "").toLowerCase())) return match;
+    return `${head}${tail}`;
+  }
+
+  function repairLeadingInitialSplit(match, initial, rest) {
+    const commonInitials = new Set(["A", "I"]);
+    if (commonInitials.has(initial) && !/^(ge|rticle|mendment|merica|uthority)/i.test(rest)) return match;
+    return `${initial}${rest}`;
+  }
+
+  function isPdf2HtmlNoise(text) {
+    if (/^(?:cover|\d+)\.pdf$/i.test(text)) return true;
+    if (/^data:image\//i.test(text)) return true;
+    if (/^[\W_]{1,3}$/.test(text)) return true;
+    return false;
+  }
+
+  /**
+Convert plain text into source units by paragraph-like spacing.
+**/
   function textToSourceUnits(text, fileInfo) {
     return normalizeText(text)
       .split(/\n{2,}/)
@@ -395,7 +489,9 @@
 
   function inferTextUnitType(text) {
     if (/^(chapter|title|section)\b/i.test(text)) return "heading";
-    if (/^article\s+\d+/i.test(text)) return "heading";
+    if (/^article\s+([ivxlcdm]+|\d+)/i.test(text)) return "heading";
+    if (/^amendment\s+([ivxlcdm]+|\d+)/i.test(text)) return "heading";
+
     if (/^\(?\d+\)?\s+/.test(text)) return "paragraph";
     return "block";
   }
