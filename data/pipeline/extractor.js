@@ -222,7 +222,11 @@
       };
     }
 
-    const sourceUnits = htmlToSourceUnits(body, fileInfo);
+       
+    const isPdf2Html = isPdf2HtmlDocument(doc, html);
+    const sourceUnits = isPdf2Html
+      ? pdf2HtmlToSourceUnits(doc, fileInfo, warnings)
+      : htmlToSourceUnits(body, fileInfo);
     const rawText = sourceUnits.map(unit => unit.text).join("\n\n");
 
     if (sourceUnits.length === 0) {
