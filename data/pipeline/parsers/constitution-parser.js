@@ -276,6 +276,35 @@
     };
   }
 
+    function detectCanonicalConstitution(text) {
+    const sample = String(text || "");
+
+    if (/\bWe\s+the\s+People\s+of\s+the\s+United\s+States\b/i.test(sample) &&
+        /\bestablish\s+this\s+Constitution\s+for\s+the\s+United\s+States\s+of\s+America\b/i.test(sample)) {
+      return {
+        title: "Constitution of the United States",
+        shortTitle: "U.S. Constitution",
+        jurisdiction: "United States",
+        adoptionDate: "17 September 1787",
+        status: "In force, as amended",
+        reference: "US-CONST"
+      };
+    }
+
+    if (/\bConstitution\s+du\s+4\s+octobre\s+1958\b/i.test(sample)) {
+      return {
+        title: "Constitution du 4 octobre 1958",
+        shortTitle: "Constitution française",
+        jurisdiction: "France",
+        adoptionDate: "4 octobre 1958",
+        status: "In force, as amended",
+        reference: "FR-CONST-1958"
+      };
+    }
+
+    return null;
+  }
+
   function detectTitle(lines) {
     for (const line of lines) {
       const trimmed = line.trim();
