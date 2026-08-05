@@ -10,10 +10,11 @@
 - Business Impact Mode
 
 ## UX
-- 🦉 Codex mascot
+- 🦉 Owl mascot
 - Paper flip animation
 - Marble library theme
 - Command palette
+- Sound FONCTION ? (subtle) 
 
 ## Engineering
 - Parser benchmark suite
