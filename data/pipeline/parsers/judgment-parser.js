@@ -13,7 +13,7 @@
  */
 
 (function initAtlasJudgmentParser(root, factory) {
-  if (typeof module !== "undefined" && module.exports) {
+  if (typeof module !== "undefined" && module.exports && typeof require === "function") {
     module.exports = factory(require("./_core.js"));
     return;
   }
@@ -38,7 +38,7 @@
       CORE.pattern("subpara-en", /^\s*\(([a-z]|[ivxlcdm]+)\)\s+(.+)$/i, 3, "SUBPARA", match => match[1])
     ],
     fr: [
-      CORE.pattern("section-fr", /^\s*(Faits|Contexte|Procédure|Procedure|Moyens|Motifs|Dispositif|Dépens|Depens)\s*$/i, 0, "SECT", match => match[1]),
+      CORE.pattern("section-fr", /^\s*((?:Faits(?:\s+et\s+proc[ée]dure)?|Expos[ée]\s+du\s+litige|Rappel\s+des\s+faits|Contexte|Proc[ée]dure|Moyens|Pr[ée]tentions(?:\s+des\s+parties)?|Discussion|Motivation|Motifs(?:\s+de\s+la\s+d[ée]cision)?|Sur\s+ce|Dispositif|Par\s+ces\s+motifs|D[ée]pens))\s*[:,]?\s*$/i, 0, "SECT", match => match[1]),
       CORE.pattern("paragraph-bracket-fr", /^\s*\[(\d{1,4})\]\s+(.+)$/i, 2, "PARA", match => match[1]),
       CORE.pattern("paragraph-number-fr", /^\s*(\d{1,4})\.\s+(.+)$/i, 2, "PARA", match => match[1])
     ],
@@ -216,7 +216,7 @@
     const score = (HEADER_PATTERNS[language] || HEADER_PATTERNS.en).filter(regex => regex.test(firstBlock)).length;
     if (score === 0) return null;
 
-    const endMatch = text.match(/\b(?:Facts|Background|Procedural\s+History|The\s+facts|Introduction|Faits|Motifs|Hechos|Sachverhalt)\b/i) ||
+    const endMatch = text.match(/\b(?:Facts|Background|Procedural\s+History|The\s+facts|Introduction|Faits(?:\s+et\s+proc[ée]dure)?|Expos[ée]\s+du\s+litige|Rappel\s+des\s+faits|Motifs(?:\s+de\s+la\s+d[ée]cision)?|Sur\s+ce|Par\s+ces\s+motifs|Hechos|Sachverhalt)\b/i) ||
       text.match(/^\s*\[?\d{1,4}\]?\s+/m);
     const end = endMatch ? endMatch.index : Math.min(3000, text.length);
     const content = CORE.extractRegion(text, 0, end);
@@ -348,7 +348,7 @@
     const patterns = [
       /\bJUDGMENT\s+OF\s+THE\s+(COURT|TRIBUNAL|CHAMBER)\b/i,
       /\b(Court\s+of\s+(?:Justice|Appeal|First\s+Instance|Cassation)|Supreme\s+Court|Constitutional\s+Court|High\s+Court|District\s+Court|European\s+Court\s+of\s+(?:Justice|Human\s+Rights)|International\s+Court\s+of\s+Justice|Arbitral\s+Tribunal)\b/i,
-      /\b(Cour\s+(?:de\s+(?:justice|cassation)|d'appel|européenne)|Conseil\s+d'État|Conseil\s+constitutionnel)\b/i,
+      /\b(Cour\s+(?:de\s+(?:justice|cassation)|d'appel|administrative\s+d'appel|européenne)|Conseil\s+d['’]État|Conseil\s+d['’]Etat|Conseil\s+constitutionnel|Tribunal\s+(?:judiciaire|administratif|de\s+commerce|correctionnel))\b/i,
       /\b(Bundesgerichtshof|Bundesverfassungsgericht|Oberlandesgericht|Landgericht|Amtsgericht)\b/i,
       /\b(Tribunal\s+(?:Supremo|Constitucional|de\s+Justicia)|Corte\s+(?:Suprema|Constitucional))\b/i
     ];
@@ -360,6 +360,8 @@
     const patterns = [
       /\b(?:Case|CASE)\s+(?:No\.?\s*)?(C-?\d+\/\d+(?:\s*P)?)\b/i,
       /\b\[?\d{4}\]?\s+(?:UKSC|UKHL|UKPC|EWCA|EWHC)\s+\d+\b/i,
+      /\b(?:N[°º]?\s*RG|RG\s*n[°º]?|N[°º]?\s*Portalis|R[ée]pertoire\s+g[ée]n[ée]ral|Minute\s+n[°º]?|Dossier\s+n[°º]?)\s*[:\-]?\s*[A-Z0-9\/\-. ]{4,}\b/i,
+      /\bDTA\s*\d{4,}\s*\d{8}\b/i,
       /\b(?:No\.?|Nr\.?|n°)\s*\d[\d/\-.]+\b/i
     ];
     const match = patterns.map(regex => text.match(regex)).find(Boolean);
@@ -368,6 +370,7 @@
 
   function extractDate(text) {
     const match = text.match(/\b\d{1,2}\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b/i) ||
+      text.match(/\b\d{1,2}\s+(janvier|f[ée]vrier|mars|avril|mai|juin|juillet|ao[ûu]t|septembre|octobre|novembre|d[ée]cembre)\s+\d{4}\b/i) ||
       text.match(/\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b/);
     return match ? match[0] : null;
   }

@@ -25,10 +25,13 @@
     const detection = input.detection || {};
     const routing = input.routing || {};
     const parserOutput = input.parserOutput || {};
-    const metadata = parserOutput.metadata || {};
     const text = extraction.normalizedText || extraction.text || extraction.rawText || "";
     const sourceFilename = extraction.filename || parserOutput.filename || "";
     const documentType = normalizeType(parserOutput.documentType || routing.parserType || detection.type || "unknown");
+    const metadata = {
+      ...(parserOutput.metadata || {}),
+      ...detectCanonicalIdentityMetadata(documentType, text)
+    };
     const reference = firstValue(
       metadata.regulationNumber,
       metadata.directiveNumber,
@@ -42,7 +45,7 @@
     const date = firstValue(metadata.judgmentDate, metadata.adoptionDate, metadata.signatureDate, metadata.date);
     const fingerprint = fingerprintText(text);
     const displayTitle = buildDisplayTitle({ metadata, documentType, authority, jurisdiction, date, reference, sourceFilename });
-    const shortTitle = buildShortTitle({ displayTitle, authority, date, reference, sourceFilename });
+    const shortTitle = buildShortTitle({ metadata, displayTitle, authority, date, reference, sourceFilename });
     const canonicalId = buildCanonicalId({ documentType, jurisdiction, authority, date, reference, fingerprint, displayTitle });
     const warnings = buildIdentityWarnings({ displayTitle, documentType, jurisdiction, authority, date, reference, sourceFilename, text });
 
@@ -93,7 +96,59 @@
     ].filter(isMeaningful).join(" - ") || titleFromFilename(parts.sourceFilename) || "Untitled Legal Document";
   }
 
+  function detectCanonicalIdentityMetadata(documentType, text) {
+    if (documentType !== "constitution") return {};
+
+    const sample = String(text || "").slice(0, 24000);
+
+    if (isUsConstitutionCanonicalText(sample)) {
+      return {
+        title: "Constitution of the United States",
+        shortTitle: "U.S. Constitution",
+        jurisdiction: "United States",
+        authority: "Constituent authority",
+        adoptionDate: "17 September 1787",
+        dateForce: "21 June 1788",
+        status: "In force, as amended",
+        reference: "US-CONST"
+      };
+    }
+
+    if (/\bConstitution\s+du\s+4\s+octobre\s+1958\b/i.test(sample)) {
+      return {
+        title: "Constitution du 4 octobre 1958",
+        shortTitle: "Constitution française",
+        jurisdiction: "France",
+        authority: "Constituent authority",
+        adoptionDate: "4 octobre 1958",
+        status: "In force, as amended",
+        reference: "FR-CONST-1958"
+      };
+    }
+
+    return {};
+  }
+
+  function isUsConstitutionCanonicalText(sample) {
+    const text = String(sample || "");
+    const hasFullPreamble = /\bWe\s+the\s+People\s+of\s+the\s+United\s+States\b/i.test(text);
+    const hasPreambleTail = /\bsecure\s+the\s+Blessings\s+of\s+Liberty\b/i.test(text) &&
+      /\bordain\s+and\s+establish\s+this\s+Constitution\s+for\s+the\s+United\b/i.test(text);
+    const hasInstitutionalArticles = /\bArticle\s+I\b/i.test(text) &&
+      /\bArticle\s+II\b/i.test(text) &&
+      /\bArticle\s+III\b/i.test(text);
+    const hasBillOfRights = /\bAmendment\s+I\b/i.test(text) &&
+      /\bAmendment\s+II\b/i.test(text) &&
+      /\bAmendment\s+III\b/i.test(text);
+
+    return (hasFullPreamble || hasPreambleTail) &&
+      /\bConstitution\b/i.test(text) &&
+      /\bUnited\s+States(?:\s+of\s+America)?\b/i.test(text) &&
+      (hasInstitutionalArticles || hasBillOfRights);
+  }
+
   function buildShortTitle(parts) {
+    if (isMeaningful(parts.metadata?.shortTitle)) return parts.metadata.shortTitle;
     if (parts.reference && parts.reference !== "Unknown") {
       return [compactAuthority(parts.authority), parts.reference, yearFromDate(parts.date)].filter(isMeaningful).join(" - ");
     }

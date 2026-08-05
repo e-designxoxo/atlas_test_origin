@@ -10,11 +10,14 @@
  */
 
 (function initAtlasPipeline(root, factory) {
-  if (typeof module !== "undefined" && module.exports) {
+  if (typeof module !== "undefined" && module.exports && typeof require === "function") {
     module.exports = factory(
       require("./extractor.js"),
       require("./document-detector.js"),
       require("./fiche-generator.js"),
+      require("./schema.js"),
+      require("./identifier.js"),
+      require("./validators.js"),
       {
         constitution: require("./parsers/constitution-parser.js"),
         regulation: require("./parsers/regulation-parser.js"),
@@ -33,6 +36,9 @@
     root.ATLAS_Extractor,
     root.ATLAS_DocumentDetector,
     root.ATLAS_FicheGenerator,
+    root.ATLAS_Schema,
+    root.ATLAS_Identifier,
+    root.ATLAS_Validators,
     {
       constitution: root.ATLAS_ConstitutionParser,
       regulation: root.ATLAS_RegulationParser,
@@ -44,7 +50,7 @@
       unknown: root.ATLAS_GenericParser
     }
   );
-})(typeof globalThis !== "undefined" ? globalThis : this, function createAtlasPipeline(extractor, detector, ficheGenerator, parsers) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function createAtlasPipeline(extractor, detector, ficheGenerator, schema, identifier, validators, parsers) {
   "use strict";
 
   const VERSION = "1.0.0";
@@ -56,7 +62,8 @@
     { id: "detecting", label: "Identifying document type", weight: 10 },
     { id: "routing", label: "Selecting parser", weight: 5 },
     { id: "parsing", label: "Parsing document structure", weight: 40 },
-    { id: "generating", label: "Generating fiche", weight: 25 },
+    { id: "identifying", label: "Building canonical identity", weight: 10 },
+    { id: "generating", label: "Generating fiche", weight: 15 },
     { id: "complete", label: "Complete", weight: 10 }
   ];
 
@@ -66,6 +73,7 @@
     const timing = {};
     const report = createProgressReporter(options.onProgress);
 
+    refreshDependencies();
     const dependencies = checkDependencies();
     if (!dependencies.ready) {
       return failedResult("dependencies", dependencies.message, input, warnings);
@@ -81,12 +89,14 @@
     }
     timing.extractionMs = Date.now() - extractionStart;
     warnings.push(...normalizeWarnings(extraction.warnings));
+    if (validators?.validateExtraction) warnings.push(...validators.validateExtraction(extraction));
 
     report("detecting", "Scanning legal form signals.");
     const detectionStart = Date.now();
     const detection = runDetection(extraction, options);
     timing.detectionMs = Date.now() - detectionStart;
     warnings.push(...normalizeWarnings(detection.warnings));
+    if (validators?.validateDetection) warnings.push(...validators.validateDetection(detection));
 
     report("routing", "Choosing safest parser.");
     const routing = routeParser(detection, options);
@@ -107,6 +117,7 @@
         extraction,
         detection,
         routing,
+        identity: null,
         parserOutput: null,
         duplicate: null,
         warnings: dedupeWarnings(warnings),
@@ -116,13 +127,20 @@
     }
     timing.parsingMs = Date.now() - parseStart;
     warnings.push(...normalizeWarnings(parserOutput.warnings));
+    if (validators?.validateParserOutput) warnings.push(...validators.validateParserOutput(parserOutput));
+
+    report("identifying", "Building canonical identity.");
+    const identity = buildIdentity(extraction, detection, routing, parserOutput, options);
+    warnings.push(...normalizeWarnings(identity.warnings));
+    if (validators?.validateIdentity) warnings.push(...validators.validateIdentity(identity));
 
     report("generating", "Building workspace fiche.");
     const ficheStart = Date.now();
-    const fiche = runFicheGenerator(parserOutput, extraction, detection, routing, options, warnings);
+    const fiche = runFicheGenerator(parserOutput, extraction, detection, routing, identity, options, warnings);
     timing.ficheGenerationMs = Date.now() - ficheStart;
+    if (validators?.validateFiche) warnings.push(...validators.validateFiche(fiche));
 
-    const duplicate = checkDuplicates(fiche.document?.metadata || parserOutput.metadata || {}, options.existingLibrary);
+    const duplicate = checkDuplicates(identity, options.existingLibrary);
     timing.totalMs = Date.now() - startedAt;
 
     report("complete", "Fiche ready.");
@@ -135,6 +153,7 @@
       extraction,
       detection,
       routing,
+      identity,
       parserOutput,
       duplicate,
       warnings: dedupeWarnings(warnings),
@@ -249,12 +268,38 @@
     }
   }
 
-  function runFicheGenerator(parserOutput, extraction, detection, routing, options, warnings) {
+  function buildIdentity(extraction, detection, routing, parserOutput, options) {
+    if (identifier && typeof identifier.buildIdentity === "function") {
+      return identifier.buildIdentity({ extraction, detection, routing, parserOutput, options });
+    }
+
+    const text = extraction.normalizedText || extraction.text || extraction.rawText || "";
+    const fingerprint = `fp-${String(text.length)}-${String(text).slice(0, 24).replace(/\W+/g, "-")}`;
+    return {
+      schemaVersion: "atlas.identity.v1",
+      identityVersion: "atlas.identity.v1",
+      canonicalId: `${routing.parserType || "unknown"}-${fingerprint}`,
+      fingerprint,
+      displayTitle: parserOutput.metadata?.title || extraction.filename || "Untitled Legal Document",
+      shortTitle: parserOutput.metadata?.shortTitle || parserOutput.metadata?.title || extraction.filename || "Untitled",
+      documentType: parserOutput.documentType || routing.parserType || "unknown",
+      jurisdiction: parserOutput.metadata?.jurisdiction || "Unknown",
+      authority: parserOutput.metadata?.court || parserOutput.metadata?.body || "Unknown",
+      date: parserOutput.metadata?.adoptionDate || parserOutput.metadata?.judgmentDate || "Unknown",
+      reference: parserOutput.metadata?.caseNumber || parserOutput.metadata?.regulationNumber || "Unknown",
+      sourceFilename: extraction.filename || "",
+      confidence: { detection: detection.confidence || 0, identity: 20 },
+      warnings: [makeWarning("IDENTIFIER_FALLBACK", "Canonical identity module was not available.")]
+    };
+  }
+
+  function runFicheGenerator(parserOutput, extraction, detection, routing, identity, options, warnings) {
     try {
       return ficheGenerator.generate(parserOutput, {
         language: options.language || detection.language || parserOutput.stats?.language || "en",
         detection,
         routing,
+        identity,
         filename: extraction.filename,
         warnings
       });
@@ -265,10 +310,14 @@
   }
 
   function checkDependencies() {
+    refreshDependencies();
     const missing = [];
     if (!extractor || typeof extractor.extract !== "function") missing.push("extractor");
     if (!detector || typeof detector.detect !== "function") missing.push("document-detector");
     if (!ficheGenerator || typeof ficheGenerator.generate !== "function") missing.push("fiche-generator");
+    if (!schema || !schema.SCHEMA_VERSIONS) missing.push("schema");
+    if (!identifier || typeof identifier.buildIdentity !== "function") missing.push("identifier");
+    if (!validators || typeof validators.validateIdentity !== "function") missing.push("validators");
     if (!parsers || !parsers.unknown || typeof parsers.unknown.parse !== "function") missing.push("generic-parser");
 
     return {
@@ -278,17 +327,45 @@
     };
   }
 
-  function checkDuplicates(metadata, existingLibrary) {
+  function refreshDependencies() {
+    const root = typeof globalThis !== "undefined" ? globalThis : null;
+    if (!root) return;
+
+    extractor = extractor || root.ATLAS_Extractor;
+    detector = detector || root.ATLAS_DocumentDetector;
+    ficheGenerator = ficheGenerator || root.ATLAS_FicheGenerator;
+    schema = schema || root.ATLAS_Schema;
+    identifier = identifier || root.ATLAS_Identifier;
+    validators = validators || root.ATLAS_Validators;
+    parsers = parsers || {};
+    parsers.constitution = parsers.constitution || root.ATLAS_ConstitutionParser;
+    parsers.regulation = parsers.regulation || root.ATLAS_RegulationParser;
+    parsers.directive = parsers.directive || root.ATLAS_DirectiveParser;
+    parsers.treaty = parsers.treaty || root.ATLAS_TreatyParser;
+    parsers.statute = parsers.statute || root.ATLAS_StatuteParser;
+    parsers.judgment = parsers.judgment || root.ATLAS_JudgmentParser;
+    parsers.contract = parsers.contract || root.ATLAS_ContractParser;
+    parsers.unknown = parsers.unknown || root.ATLAS_GenericParser;
+  }
+
+  function checkDuplicates(identityOrMetadata, existingLibrary) {
     if (!Array.isArray(existingLibrary) || existingLibrary.length === 0) return null;
 
-    const title = normalizeComparable(metadata.title);
-    const ref = normalizeComparable(metadata.regulationNumber || metadata.directiveNumber || metadata.caseNumber || metadata.actNumber);
+    const metadata = identityOrMetadata || {};
+    const fingerprint = normalizeComparable(metadata.fingerprint);
+    const canonicalId = normalizeComparable(metadata.canonicalId);
+    const title = normalizeComparable(metadata.displayTitle || metadata.title);
+    const ref = normalizeComparable(metadata.reference || metadata.regulationNumber || metadata.directiveNumber || metadata.caseNumber || metadata.actNumber);
 
     for (const existing of existingLibrary) {
       const existingMetadata = existing.metadata || existing;
-      const existingTitle = normalizeComparable(existingMetadata.title);
-      const existingRef = normalizeComparable(existingMetadata.regulationNumber || existingMetadata.directiveNumber || existingMetadata.caseNumber || existingMetadata.actNumber);
+      const existingFingerprint = normalizeComparable(existingMetadata.fingerprint || existingMetadata.identity?.fingerprint);
+      const existingCanonicalId = normalizeComparable(existingMetadata.canonicalId || existingMetadata.identity?.canonicalId);
+      const existingTitle = normalizeComparable(existingMetadata.displayTitle || existingMetadata.title);
+      const existingRef = normalizeComparable(existingMetadata.reference || existingMetadata.regulationNumber || existingMetadata.directiveNumber || existingMetadata.caseNumber || existingMetadata.actNumber);
 
+      if (fingerprint && existingFingerprint && fingerprint === existingFingerprint) return existing;
+      if (canonicalId && existingCanonicalId && canonicalId === existingCanonicalId) return existing;
       if (ref && existingRef && ref === existingRef) return existing;
       if (title && existingTitle && title === existingTitle) return existing;
       if (title && existingTitle && title.length > 20 && stringSimilarity(title, existingTitle) > 0.82) return existing;
@@ -332,6 +409,7 @@
       extraction: null,
       detection: null,
       routing: null,
+      identity: null,
       parserOutput: null,
       duplicate: null,
       warnings: allWarnings,
@@ -446,4 +524,3 @@
     checkDuplicates
   };
 });
-

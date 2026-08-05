@@ -28,12 +28,19 @@ async function runCase(testCase) {
   const text = fs.readFileSync(fixturePath, "utf8");
   const extraction = makeExtraction(testCase.filename, text);
   const result = await pipeline.process(extraction, { skipExtraction: true });
+  const repeat = await pipeline.process(extraction, { skipExtraction: true });
 
   assertCase(result.status === "complete", `${testCase.id}: expected complete status, got ${result.status}`);
   assertCase(result.detection.type === testCase.expectedType, `${testCase.id}: expected detection ${testCase.expectedType}, got ${result.detection.type}`);
   assertCase(result.routing.parserType === testCase.expectedRoute, `${testCase.id}: expected route ${testCase.expectedRoute}, got ${result.routing.parserType}`);
   assertCase(result.detection.confidence >= testCase.minConfidence, `${testCase.id}: expected confidence >= ${testCase.minConfidence}, got ${result.detection.confidence}`);
   assertCase(result.fiche.provisions.length >= testCase.minProvisions, `${testCase.id}: expected at least ${testCase.minProvisions} provisions, got ${result.fiche.provisions.length}`);
+  assertCase(result.identity && result.identity.schemaVersion === "atlas.identity.v1", `${testCase.id}: expected atlas.identity.v1 identity`);
+  assertCase(result.identity.fingerprint && result.identity.fingerprint.startsWith("fp-"), `${testCase.id}: expected stable fingerprint`);
+  assertCase(result.identity.canonicalId && result.identity.canonicalId.includes(result.identity.fingerprint.slice(0, 10)), `${testCase.id}: expected canonical ID to include fingerprint prefix`);
+  assertCase(result.fiche.document.identity && result.fiche.document.identity.canonicalId === result.identity.canonicalId, `${testCase.id}: expected fiche to embed canonical identity`);
+  assertCase(repeat.identity.fingerprint === result.identity.fingerprint, `${testCase.id}: expected idempotent fingerprint`);
+  assertCase(repeat.identity.canonicalId === result.identity.canonicalId, `${testCase.id}: expected idempotent canonical ID`);
 
   return {
     id: testCase.id,
@@ -41,6 +48,7 @@ async function runCase(testCase) {
     detected: result.detection.type,
     confidence: result.detection.confidence,
     route: result.routing.parserType,
+    canonicalId: result.identity.canonicalId,
     provisions: result.fiche.provisions.length,
     warnings: result.warnings.length
   };
@@ -54,7 +62,7 @@ async function runCase(testCase) {
   }
 
   for (const row of rows) {
-    console.log(`${row.id}: ${row.status}, detected=${row.detected}, confidence=${row.confidence}, route=${row.route}, provisions=${row.provisions}, warnings=${row.warnings}`);
+    console.log(`${row.id}: ${row.status}, detected=${row.detected}, confidence=${row.confidence}, route=${row.route}, provisions=${row.provisions}, warnings=${row.warnings}, id=${row.canonicalId}`);
   }
 })().catch(error => {
   console.error(error.message);

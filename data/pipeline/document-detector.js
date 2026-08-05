@@ -61,6 +61,11 @@
           position: "early",
           description: "US Constitution preamble opening"
         }),
+        signal("us_constitution_preamble_tail", 46, {
+          en: /\bsecure\s+the\s+Blessings\s+of\s+Liberty\b[\s\S]{0,260}\bordain\s+and\s+establish\s+this\s+Constitution\s+for\s+the\s+United/i,
+          position: "early",
+          description: "US Constitution preamble tail"
+        }),
         signal("named_constitution_en", 48, {
           en: /\bConstitution\s+of\s+(the\s+)?[A-Z][A-Za-z .'-]{2,80}\b/i,
           position: "early",
@@ -337,22 +342,35 @@
           description: "US case citation"
         }),
         signal("french_court_name", 46, {
-          fr: /\b(?:Cour\s+d'appel|Cour\s+de\s+cassation|Conseil\s+d['’]Etat|Conseil\s+constitutionnel|Tribunal\s+judiciaire|Tribunal\s+administratif|Cour\s+administrative\s+d'appel)\b/i,
+          multi: [
+            /\b(?:Cour\s+d'appel|Cour\s+de\s+cassation|Conseil\s+d['’]Etat|Conseil\s+constitutionnel|Cour\s+administrative\s+d'appel)\b/i,
+            /\b(?:Tribunal\s+judiciaire|Tribunal\s+administratif|Tribunal\s+de\s+commerce|Tribunal\s+correctionnel|Tribunal\s+de\s+police)\b/i,
+            /\b(?:Conseil\s+de\s+prud['’]?hommes|Conseil\s+des\s+prud['’]?hommes)\b/i
+          ],
           position: "early",
           description: "French court name"
         }),
         signal("french_decision_heading", 42, {
-          fr: /\b(?:ARR[ÊE]T|JUGEMENT|ORDONNANCE|D[ÉE]CISION)\s+(?:DU|DU\s+\d{1,2}|DE\s+LA|DE\s+L['’])?/i,
+          multi: [
+            /\b(?:ARR[ÊE]T|JUGEMENT|ORDONNANCE|D[ÉE]CISION)\s+(?:DU|DU\s+\d{1,2}|DE\s+LA|DE\s+L['’])?/i,
+            /\b(?:JUGEMENT\s+CONTRADICTOIRE|JUGEMENT\s+R[ÉE]PUT[ÉE]\s+CONTRADICTOIRE|ORDONNANCE\s+DE\s+R[ÉE]F[ÉE]R[ÉE])\b/i
+          ],
           position: "early",
           description: "French judgment or decision heading"
         }),
         signal("french_case_number", 24, {
-          fr: /\b(?:N[°º]\s*RG|RG\s*n[°º]?|N[°º]\s*Portalis|DTA)\s*[:\-]?\s*[A-Z0-9\/\-. ]{4,}\b/i,
+          multi: [
+            /\b(?:N[°º]\s*RG|RG\s*n[°º]?|N[°º]\s*Portalis|DTA)\s*[:\-]?\s*[A-Z0-9\/\-. ]{4,}\b/i,
+            /\b(?:R[ée]pertoire\s+g[ée]n[ée]ral|Minute\s+n[°º]?|Dossier\s+n[°º]?)\s*[:\-]?\s*[A-Z0-9\/\-. ]{4,}\b/i
+          ],
           position: "early",
           description: "French court case or docket number"
         }),
         signal("french_reasons_disposition", 28, {
-          fr: /\b(?:MOTIFS\s+DE\s+LA\s+D[ÉE]CISION|PAR\s+CES\s+MOTIFS|FAITS\s+ET\s+PROC[ÉE]DURE)\b/i,
+          multi: [
+            /\b(?:MOTIFS\s+DE\s+LA\s+D[ÉE]CISION|PAR\s+CES\s+MOTIFS|FAITS\s+ET\s+PROC[ÉE]DURE)\b/i,
+            /\b(?:EXPOS[ÉE]\s+DU\s+LITIGE|RAPPEL\s+DES\s+FAITS|SUR\s+CE[, ]|DISCUSSION|MOTIVATION)\b/i
+          ],
           position: "anywhere",
           description: "French decision structure heading"
         }),

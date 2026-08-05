@@ -11,7 +11,7 @@
  */
 
 (function initAtlasFicheGenerator(root, factory) {
-  if (typeof module !== "undefined" && module.exports) {
+  if (typeof module !== "undefined" && module.exports && typeof require === "function") {
     module.exports = factory(require("./parsers/_core.js"));
     return;
   }
@@ -54,9 +54,11 @@
     const parsed = parserOutput || {};
     const documentType = parsed.documentType || options.documentType || "unknown";
     const typeMeta = DOCUMENT_TYPE_META[documentType] || DOCUMENT_TYPE_META.unknown;
-    const metadata = enrichMetadata(parsed.metadata || {}, parsed, typeMeta, documentType, options);
+    const identity = options.identity || null;
+    const metadata = enrichMetadata(parsed.metadata || {}, parsed, typeMeta, documentType, { ...options, identity });
     const language = options.language || metadata.language || parsed.stats?.language || "en";
     const warnings = collectWarnings(parsed.warnings, options.warnings);
+    const enrichedParsed = { ...parsed, metadata };
 
     const specialBlocks = buildSpecialBlocks(parsed, metadata, documentType);
     const elements = sourceOrderedElements(parsed);
@@ -67,15 +69,16 @@
       version: VERSION,
       generatedAt: new Date().toISOString(),
       document: {
-        id: buildDocumentId(metadata, parsed.filename || options.filename),
+        id: identity?.canonicalId || buildDocumentId(metadata, parsed.filename || options.filename),
         type: documentType,
         label: typeMeta.label,
         filename: parsed.filename || options.filename || "",
-        citation: formatDocumentCitation(metadata, documentType),
+        citation: identity?.displayTitle || formatDocumentCitation(metadata, documentType),
+        identity,
         metadata,
         status: determineStatus(metadata, parsed.amendments || [], documentType)
       },
-      summary: generateSummary(parsed, typeMeta, provisions, warnings),
+      summary: generateSummary(enrichedParsed, typeMeta, provisions, warnings),
       map: documentMap,
       documentMap,
       specialBlocks,
@@ -173,16 +176,33 @@
 
   function enrichMetadata(metadata, parsed, typeMeta, documentType, options) {
     const filename = parsed.filename || options.filename || "";
-    const title = metadata.title || metadata.shortTitle || titleFromFilename(filename) || "Untitled Legal Document";
+    const identity = options.identity || null;
+    const identityTitle = isKnownValue(identity?.displayTitle) ? identity.displayTitle : null;
+    const identityShortTitle = isKnownValue(identity?.shortTitle) ? identity.shortTitle : null;
+    const identityReference = isKnownValue(identity?.reference) ? identity.reference : null;
+    const identityJurisdiction = isKnownValue(identity?.jurisdiction) ? identity.jurisdiction : null;
+    const identityAuthority = isKnownValue(identity?.authority) ? identity.authority : null;
+    const identityDate = isKnownValue(identity?.date) ? identity.date : null;
+    const title = identityTitle || metadata.title || metadata.shortTitle || titleFromFilename(filename) || "Untitled Legal Document";
 
     return {
       ...metadata,
       title,
+      shortTitle: identityShortTitle || metadata.shortTitle,
+      reference: identityReference || metadata.reference,
+      jurisdiction: identityJurisdiction || metadata.jurisdiction,
+      authority: identityAuthority || metadata.authority,
+      adoptionDate: identityDate || metadata.adoptionDate,
       documentType,
       documentTypeLabel: typeMeta.label,
       documentTypeColor: typeMeta.color,
       sourceFilename: filename
     };
+  }
+
+  function isKnownValue(value) {
+    const text = String(value || "").trim();
+    return Boolean(text && !/^(unknown|null|undefined)$/i.test(text));
   }
 
   function sourceOrderedElements(parsed) {
@@ -636,4 +656,3 @@
     generateSummary
   };
 });
-

@@ -11,7 +11,7 @@
  */
 
 (function initAtlasContractParser(root, factory) {
-  if (typeof module !== "undefined" && module.exports) {
+  if (typeof module !== "undefined" && module.exports && typeof require === "function") {
     module.exports = factory(require("./_core.js"));
     return;
   }

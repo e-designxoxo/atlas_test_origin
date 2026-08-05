@@ -1,96 +1,106 @@
 /**
- * ATLAS Ingestion Pipeline - Statute Parser
+ * ATLAS Ingestion Pipeline - Directive Parser
  *
- * Parses statutes and legislative acts into structured, source-grounded legal
- * data.
+ * Parses EU directives into structured, source-grounded legal data.
  *
- * Statute-specific priorities:
- * - detect enactment clause
- * - use sections/articles as core units depending on jurisdiction
- * - preserve parts, divisions, schedules, subsections, and paragraphs
- * - extract short title, act number, jurisdiction, and commencement signals
+ * Directive-specific priorities:
+ * - detect recitals separately from articles
+ * - preserve chapter / section / article / paragraph hierarchy
+ * - detect transposition obligations and deadlines
+ * - extract directive number and EU adopting body metadata
+ * - distinguish directives from regulations by transposition language
  */
 
-(function initAtlasStatuteParser(root, factory) {
-  if (typeof module !== "undefined" && module.exports) {
+(function initAtlasDirectiveParser(root, factory) {
+  if (typeof module !== "undefined" && module.exports && typeof require === "function") {
     module.exports = factory(require("./_core.js"));
     return;
   }
 
   if (!root.ATLAS_ParserCore) {
-    throw new Error("[statute-parser] ATLAS_ParserCore must be loaded before this module.");
+    throw new Error("[directive-parser] ATLAS_ParserCore must be loaded before this module.");
   }
 
   const parser = factory(root.ATLAS_ParserCore);
   root.ATLAS_DirectiveParser = parser;
   if (root.window) root.window.ATLAS_DirectiveParser = parser;
-
-})(typeof globalThis !== "undefined" ? globalThis : this, function createAtlasStatuteParser(CORE) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function createAtlasDirectiveParser(CORE) {
   "use strict";
 
   const VERSION = "1.0.0";
-  const DOCUMENT_TYPE = "statute";
-  const MIN_CORE_UNIT_COUNT_WARNING = 2;
+  const DOCUMENT_TYPE = "directive";
+  const MIN_ARTICLE_COUNT_WARNING = 3;
 
   const STRUCTURAL_PATTERNS = {
     en: [
-      CORE.pattern("part-en", /\b(?:Part|PART)\s+([IVXLCDM]+|\d+)\b[\s.\-—:]*([^]*)?$/i, 0, "PART", match => match[1]),
-      CORE.pattern("schedule-en", /\b(?:Schedule|SCHEDULE)\s+([IVXLCDM]+|\d+|[A-Z])\b[\s.\-—:]*([^]*)?$/i, 0, "SCHEDULE", match => match[1], { isAnnex: true }),
-      CORE.pattern("division-en", /\b(?:Division|DIVISION)\s+([IVXLCDM]+|\d+)\b[\s.\-—:]*([^]*)?$/i, 1, "DIV", match => match[1]),
-      CORE.pattern("section-en", /\b(?:Section|SECTION)\s+(\d+[A-Za-z]?(?:\.\d+)?)\b[\s.\-—:]*([^]*)?$/i, 2, "SEC", match => match[1]),
-      CORE.pattern("section-number-en", /^\s*(\d+[A-Za-z]?(?:\.\d+)?)\.\s+(.+)$/i, 2, "SEC", match => match[1]),
-      CORE.pattern("subsection-en", /^\s*\((\d{1,3}[a-z]?)\)\s+(.+)$/i, 3, "SUBSEC", match => match[1]),
-      CORE.pattern("paragraph-en", /^\s*\(([a-z])\)\s+(.+)$/i, 4, "PARA", match => match[1]),
-      CORE.pattern("subparagraph-en", /^\s*\(([ivxlcdm]+)\)\s+(.+)$/i, 5, "SUBPARA", match => match[1])
+      CORE.pattern("chapter-en", /\b(?:Chapter|CHAPTER)\s+([IVXLCDM]+|\d+)\b[\s.\-—:]*([^]*)?$/i, 0, "CH", match => match[1]),
+      CORE.pattern("section-en", /\b(?:Section|SECTION)\s+(\d+[A-Za-z]?)\b[\s.\-—:]*([^]*)?$/i, 1, "SEC", match => match[1]),
+      CORE.pattern("article-en", /\b(?:Article|ARTICLE)\s+(\d{1,4}[A-Za-z]?(?:[-–—](?:\d{1,4}|[A-Za-z]+))?(?:\s*(?:bis|ter|quater))?)\b[\s.\-—:]*([^]*)?$/i, 2, "ART", match => match[1]),
+      CORE.pattern("annex-en", /\b(?:Annex|ANNEX)\s+([IVXLCDM]+|\d+)\b[\s.\-—:]*([^]*)?$/i, 0, "ANNEX", match => match[1], { isAnnex: true })
     ],
     fr: [
-      CORE.pattern("part-fr", /\b(?:Partie|PARTIE)\s+([IVXLCDM]+|\d+)\b[\s.\-—:]*([^]*)?$/i, 0, "PART", match => match[1]),
-      CORE.pattern("title-fr", /\b(?:Titre|TITRE)\s+([IVXLCDM]+|\d+)(?:er|ère|eme|ème)?\b[\s.\-—:]*([^]*)?$/i, 1, "TITLE", match => match[1]),
-      CORE.pattern("chapter-fr", /\b(?:Chapitre|CHAPITRE)\s+([IVXLCDM]+|\d+)(?:er|ère|eme|ème)?\b[\s.\-—:]*([^]*)?$/i, 1, "CH", match => match[1]),
+      CORE.pattern("chapter-fr", /\b(?:Chapitre|CHAPITRE)\s+([IVXLCDM]+|\d+)(?:er|ère|eme|ème)?\b[\s.\-—:]*([^]*)?$/i, 0, "CH", match => match[1]),
+      CORE.pattern("section-fr", /\b(?:Section|SECTION)\s+(\d+[A-Za-z]?)\b[\s.\-—:]*([^]*)?$/i, 1, "SEC", match => match[1]),
       CORE.pattern("article-fr", /\b(?:Article|ARTICLE|Art\.?)\s+(\d{1,4}(?:er|ère|eme|ème)?(?:[-–—](?:\d{1,4}|[A-Za-z]+))?(?:\s*(?:bis|ter|quater))?)\b[\s.\-—:]*([^]*)?$/i, 2, "ART", match => match[1]),
-      CORE.pattern("section-fr", /\b(?:Section|SECTION)\s+(\d+[A-Za-z]?)\b[\s.\-—:]*([^]*)?$/i, 2, "SEC", match => match[1]),
       CORE.pattern("annex-fr", /\b(?:Annexe|ANNEXE)\s+([IVXLCDM]+|\d+)\b[\s.\-—:]*([^]*)?$/i, 0, "ANNEX", match => match[1], { isAnnex: true })
     ],
     de: [
-      CORE.pattern("part-de", /\b(?:Teil|TEIL)\s+([IVXLCDM]+|\d+)\b[\s.\-—:]*([^]*)?$/i, 0, "PART", match => match[1]),
-      CORE.pattern("section-de", /\b(?:Abschnitt|ABSCHNITT)\s+([IVXLCDM]+|\d+)\b[\s.\-—:]*([^]*)?$/i, 1, "SEC", match => match[1]),
-      CORE.pattern("paragraph-de", /\b(?:§|Paragraph|PARAGRAPH)\s*(\d+[A-Za-z]?(?:\s*[A-Za-z])?)\b[\s.\-—:]*([^]*)?$/i, 2, "SEC", match => match[1]),
-      CORE.pattern("subsection-de", /^\s*\((\d{1,3}[a-z]?)\)\s+(.+)$/i, 3, "SUBSEC", match => match[1])
+      CORE.pattern("chapter-de", /\b(?:Kapitel|KAPITEL)\s+([IVXLCDM]+|\d+)\b[\s.\-—:]*([^]*)?$/i, 0, "CH", match => match[1]),
+      CORE.pattern("section-de", /\b(?:Abschnitt|ABSCHNITT)\s+(\d+[A-Za-z]?)\b[\s.\-—:]*([^]*)?$/i, 1, "SEC", match => match[1]),
+      CORE.pattern("article-de", /\b(?:Artikel|ARTIKEL|Art\.?)\s+(\d{1,4}[A-Za-z]?(?:[-–—](?:\d{1,4}|[A-Za-z]+))?)\b[\s.\-—:]*([^]*)?$/i, 2, "ART", match => match[1]),
+      CORE.pattern("annex-de", /\b(?:Anhang|ANHANG)\s+([IVXLCDM]+|\d+)\b[\s.\-—:]*([^]*)?$/i, 0, "ANNEX", match => match[1], { isAnnex: true })
     ],
     es: [
-      CORE.pattern("title-es", /\b(?:Título|Titulo|TITULO)\s+([IVXLCDM]+|\d+)\b[\s.\-—:]*([^]*)?$/i, 1, "TITLE", match => match[1]),
-      CORE.pattern("chapter-es", /\b(?:Capítulo|Capitulo|CAPITULO)\s+([IVXLCDM]+|\d+)\b[\s.\-—:]*([^]*)?$/i, 1, "CH", match => match[1]),
+      CORE.pattern("chapter-es", /\b(?:Capítulo|Capitulo|CAPITULO)\s+([IVXLCDM]+|\d+)\b[\s.\-—:]*([^]*)?$/i, 0, "CH", match => match[1]),
+      CORE.pattern("section-es", /\b(?:Sección|Seccion|SECCION)\s+(\d+[A-Za-z]?)\b[\s.\-—:]*([^]*)?$/i, 1, "SEC", match => match[1]),
       CORE.pattern("article-es", /\b(?:Artículo|Articulo|ARTICULO|Art\.?)\s+(\d{1,4}[A-Za-z]?(?:°|º)?(?:[-–—](?:\d{1,4}|[A-Za-z]+))?)\b[\s.\-—:]*([^]*)?$/i, 2, "ART", match => match[1]),
       CORE.pattern("annex-es", /\b(?:Anexo|ANEXO)\s+([IVXLCDM]+|\d+)\b[\s.\-—:]*([^]*)?$/i, 0, "ANNEX", match => match[1], { isAnnex: true })
     ]
   };
 
-  const ENACTMENT_MARKERS = {
-    en: [/\bBe\s+it\s+enacted\s+by\b/i, /\bENACTED\s+by\b/i],
-    fr: [/\bEst\s+promulguée\b/i, /\bL'?Assemblée\s+nationale\s+a\s+adopté\b/i],
-    de: [/\bhat\s+(?:der\s+)?Bundestag\s+(?:das\s+)?folgende\s+Gesetz\s+beschlossen\b/i, /\bverkündet\b/i],
-    es: [/\bLas\s+Cortes\s+Generales\s+han\s+aprobado\b/i, /\bse\s+promulga\b/i]
+  const ENACTING_MARKERS = {
+    en: /\b(?:HAVE|HAS)\s+ADOPTED\s+THIS\s+DIRECTIVE\s*:/i,
+    fr: /\b(?:ONT|A)\s+ADOPTÉ\s+LA\s+PRÉSENTE\s+DIRECTIVE\s*:/i,
+    de: /\b(?:HABEN|HAT)\s+FOLGENDE\s+RICHTLINIE\s+ERLASSEN\s*:/i,
+    es: /\b(?:HAN|HA)\s+ADOPTADO\s+LA\s+PRESENTE\s+DIRECTIVA\s*:/i
   };
 
-  const STATUTE_REFERENCE_PATTERNS = {
+  const RECITAL_START_MARKERS = {
+    en: /\b(?:Whereas|Having\s+regard\s+to|After\s+consulting|Acting\s+in\s+accordance\s+with)\b/i,
+    fr: /\b(?:considérant|vu\s+le|après\s+consultation|statuant\s+conformément)\b/i,
+    de: /\b(?:in\s+Erwägung|gestützt\s+auf|nach\s+Stellungnahme)\b/i,
+    es: /\b(?:considerando|visto\s+el|previa\s+consulta)\b/i
+  };
+
+  const TRANSPOSITION_PATTERNS = {
+    en: [/\btranspos(?:e|ed|ing|ition)\b/i, /\badopt\s+and\s+publish\b/i, /\bMember\s+States\s+shall\s+(bring\s+into\s+force|communicate|apply)\b/i],
+    fr: [/\btranspos(?:er|ition|é|ée|és|ées)\b/i, /\badoptent\s+et\s+publient\b/i, /\bÉtats\s+membres\s+(mettent\s+en\s+vigueur|communiquent|appliquent)\b/i],
+    de: [/\b(?:umsetzen|Umsetzung|umgesetzt)\b/i, /\bMitgliedstaaten\s+(setzen|erlassen|übermitteln|wenden)\b/i],
+    es: [/\b(?:transponer|transposición|transpuesto)\b/i, /\bEstados\s+miembros\s+(adoptarán|comunicarán|aplicarán)\b/i]
+  };
+
+  const DIRECTIVE_REFERENCE_PATTERNS = {
     en: [
-      CORE.referencePattern(/\b(?:section|Section|s\.|ss\.)\s*(\d+[A-Za-z]?(?:\.\d+)?)\b/i, "SEC", "section-reference"),
-      CORE.referencePattern(/\b(?:subsection|Subsection|sub-s\.)\s*\(?(\d{1,3}[a-z]?)\)?\b/i, "SUBSEC", "subsection-reference"),
-      CORE.referencePattern(/\b(?:schedule|Schedule|Sch\.?)\s+([IVXLCDM]+|\d+|[A-Z])\b/i, "SCHEDULE", "schedule-reference"),
-      CORE.referencePattern(/\b(?:part|Part|Pt\.?)\s+([IVXLCDM]+|\d+)\b/i, "PART", "part-reference"),
-      CORE.referencePattern(/\b(?:paragraph|para\.?)\s+\(?([ivxlcdm]+|\d+[A-Za-z]?)\)?\b/i, "PARA", "paragraph-reference")
+      CORE.referencePattern(/\b(?:Directive|DIRECTIVE)\s+\(?(?:EU|EC|EEC)?\)?\s*(?:No\.?\s*)?(\d{4}\/\d{1,4}\/?(?:EU|EC|EEC)?)\b/i, "DIR", "directive-reference"),
+      CORE.referencePattern(/\b(?:Regulation|REGULATION)\s+\(?(?:EU|EC|Euratom)\)?\s*(?:No\.?\s*)?(\d{1,4}\/\d{1,4})\b/i, "REG", "regulation-reference"),
+      CORE.referencePattern(/\b(?:Annex|ANNEX)\s+([IVXLCDM]+|\d+)\b/i, "ANNEX", "annex-reference"),
+      CORE.referencePattern(/\b(?:recital|Recital)\s+\(?(\d{1,3})\)?\b/i, "RECITAL", "recital-reference")
     ],
     fr: [
-      CORE.referencePattern(/\b(?:article|Article|Art\.?)\s+(\d{1,4}(?:er)?(?:[-–—](?:\d{1,4}|[A-Za-z]+))?)\b/i, "ART", "article-reference"),
-      CORE.referencePattern(/\b(?:section|Section)\s+(\d+[A-Za-z]?)\b/i, "SEC", "section-reference"),
-      CORE.referencePattern(/\b(?:annexe|Annexe)\s+([IVXLCDM]+|\d+)\b/i, "ANNEX", "annex-reference")
+      CORE.referencePattern(/\b(?:directive|Directive)\s+\(?(?:UE|CE|CEE)?\)?\s*(?:n°?\s*)?(\d{4}\/\d{1,4}\/?(?:UE|CE|CEE)?)\b/i, "DIR", "directive-reference"),
+      CORE.referencePattern(/\b(?:règlement|Règlement|reglement|Reglement)\s+\(?(?:UE|CE|Euratom)\)?\s*(?:n°?\s*)?(\d{1,4}\/\d{1,4})\b/i, "REG", "regulation-reference"),
+      CORE.referencePattern(/\b(?:annexe|Annexe)\s+([IVXLCDM]+|\d+)\b/i, "ANNEX", "annex-reference"),
+      CORE.referencePattern(/\b(?:considérant|considerant)\s+\(?(\d{1,3})\)?\b/i, "RECITAL", "recital-reference")
     ],
     de: [
-      CORE.referencePattern(/\b(?:§|Paragraph|Abschnitt)\s*(\d+[A-Za-z]?(?:\s*[A-Za-z])?)\b/i, "SEC", "section-reference"),
-      CORE.referencePattern(/\b(?:Absatz|Abs\.?)\s*\(?(\d{1,3}[a-z]?)\)?\b/i, "SUBSEC", "subsection-reference")
+      CORE.referencePattern(/\b(?:Richtlinie|RICHTLINIE)\s+\(?(?:EU|EG|EWG)?\)?\s*(?:Nr\.?\s*)?(\d{4}\/\d{1,4}\/?(?:EU|EG|EWG)?)\b/i, "DIR", "directive-reference"),
+      CORE.referencePattern(/\b(?:Verordnung|VERORDNUNG)\s+\(?(?:EU|EG|Euratom)\)?\s*(?:Nr\.?\s*)?(\d{1,4}\/\d{1,4})\b/i, "REG", "regulation-reference"),
+      CORE.referencePattern(/\b(?:Anhang|ANHANG)\s+([IVXLCDM]+|\d+)\b/i, "ANNEX", "annex-reference")
     ],
     es: [
-      CORE.referencePattern(/\b(?:artículo|articulo|Artículo|Articulo|Art\.?)\s+(\d{1,4}[A-Za-z]?(?:°|º)?)\b/i, "ART", "article-reference")
+      CORE.referencePattern(/\b(?:Directiva|DIRECTIVA)\s+\(?(?:UE|CE|CEE)?\)?\s*(?:n\.?\s*)?(\d{4}\/\d{1,4}\/?(?:UE|CE|CEE)?)\b/i, "DIR", "directive-reference"),
+      CORE.referencePattern(/\b(?:Reglamento|REGLAMENTO)\s+\(?(?:UE|CE|Euratom)\)?\s*(?:n\.?\s*)?(\d{1,4}\/\d{1,4})\b/i, "REG", "regulation-reference"),
+      CORE.referencePattern(/\b(?:Anexo|ANEXO)\s+([IVXLCDM]+|\d+)\b/i, "ANNEX", "annex-reference")
     ]
   };
 
@@ -102,34 +112,37 @@
     const text = normalized.normalizedText;
 
     if (!text || text.length < 50) {
-      warnings.push(CORE.makeWarning("EMPTY_TEXT", "Document text is too short for meaningful statute parsing.", { textLength: text.length }));
+      warnings.push(CORE.makeWarning("EMPTY_TEXT", "Document text is too short for meaningful directive parsing.", { textLength: text.length }));
       return CORE.createEmptyParseResult({ startedAt, version: VERSION, documentType: DOCUMENT_TYPE, filename: normalized.filename, language, warnings });
     }
 
-    const enactment = detectEnactmentClause(text, language);
-    const rawElements = discoverStructure(text, language, normalized.sourceUnits, enactment?.endPosition || 0);
+    const recitals = detectRecitals(text, language);
+    const rawElements = discoverStructure(text, language, normalized.sourceUnits);
 
     if (rawElements.length === 0) {
-      warnings.push(CORE.makeWarning("NO_STRUCTURE", "No statute sections, articles, parts, divisions, or schedules were detected.", { textLength: text.length, language }));
+      warnings.push(CORE.makeWarning("NO_STRUCTURE", "No directive chapters, sections, articles, or annexes were detected.", { textLength: text.length, language }));
       return CORE.createEmptyParseResult({ startedAt, version: VERSION, documentType: DOCUMENT_TYPE, filename: normalized.filename, language, warnings });
     }
 
-    const elements = CORE.extractContent(text, rawElements);
-    const coreUnits = elements.filter(element => ["SEC", "ART"].includes(element.type) && !element.isEmpty);
-    const hierarchyElements = elements.filter(element => !["SEC", "ART"].includes(element.type) || element.isEmpty);
-    const allElements = enactment ? [enactment, ...elements] : elements;
+    const elements = extractArticleParagraphs(text, CORE.extractContent(text, rawElements));
+    const articles = elements.filter(element => element.type === "ART" && !element.isEmpty);
+    const hierarchyElements = elements.filter(element => element.type !== "ART" || element.isEmpty);
+    const allElements = recitals ? [recitals, ...elements] : elements;
     const references = CORE.scanCrossReferences(
       allElements,
       language,
-      STATUTE_REFERENCE_PATTERNS[language] || STATUTE_REFERENCE_PATTERNS.en,
-      { allowedSourceTypes: ["ENACTMENT", "SEC", "ART", "SUBSEC", "PARA", "SCHEDULE", "ANNEX"], skipNestedContent: true }
+      DIRECTIVE_REFERENCE_PATTERNS[language] || DIRECTIVE_REFERENCE_PATTERNS.en,
+      { allowedSourceTypes: ["RECITALS", "ART", "PARA", "SEC", "ANNEX"], skipNestedContent: true }
     );
+    const transpositionArticles = detectTranspositionArticles(elements, language);
     const metadata = extractMetadata(text, language, normalized.filename);
-    const commencement = detectCommencement(elements, text);
-    const amendments = detectAmendmentSignals(elements);
 
-    if (coreUnits.length < MIN_CORE_UNIT_COUNT_WARNING) {
-      warnings.push(CORE.makeWarning("LOW_CORE_UNIT_COUNT", `Only ${coreUnits.length} core section/article unit(s) were parsed. Source may be incomplete, OCR-damaged, or not a statute.`));
+    if (articles.length < MIN_ARTICLE_COUNT_WARNING) {
+      warnings.push(CORE.makeWarning("LOW_ARTICLE_COUNT", `Only ${articles.length} article(s) were parsed. Source may be incomplete, OCR-damaged, or not a directive.`));
+    }
+
+    if (transpositionArticles.length === 0) {
+      warnings.push(CORE.makeWarning("NO_TRANSPOSITION_SIGNAL", "No strong transposition article was detected. This may be an incomplete directive extract."));
     }
 
     return {
@@ -137,38 +150,37 @@
       documentType: DOCUMENT_TYPE,
       filename: normalized.filename || "",
       metadata,
-      enactment,
-      preamble: enactment,
-      articles: coreUnits,
+      preamble: recitals,
+      recitals,
+      articles,
       hierarchyElements,
       elements,
       hierarchyTree: CORE.buildHierarchyTree(elements),
       references,
-      commencement,
-      amendments,
+      transpositionArticles,
+      amendments: [],
       warnings,
       stats: {
-        totalArticles: coreUnits.length,
+        totalArticles: articles.length,
         totalElements: elements.length,
         totalReferences: references.length,
         resolvedReferences: references.filter(reference => reference.resolved).length,
-        hasPreamble: Boolean(enactment),
-        hasEnactmentClause: Boolean(enactment),
-        scheduleCount: elements.filter(element => ["SCHEDULE", "ANNEX"].includes(element.type)).length,
-        amendmentCount: amendments.length,
+        hasPreamble: Boolean(recitals),
+        hasRecitals: Boolean(recitals),
+        transpositionArticleCount: transpositionArticles.length,
+        annexCount: elements.filter(element => element.type === "ANNEX").length,
+        amendmentCount: 0,
         language,
         durationMs: Date.now() - startedAt
       }
     };
   }
 
-  function discoverStructure(text, language, sourceUnits = [], searchStart = 0) {
+  function discoverStructure(text, language, sourceUnits = []) {
     const patterns = STRUCTURAL_PATTERNS[language] || STRUCTURAL_PATTERNS.en;
-    const fullText = String(text || "");
-    const searchText = fullText.slice(searchStart);
-    const lines = searchText.split("\n");
+    const lines = String(text || "").split("\n");
     const elements = [];
-    let position = searchStart;
+    let position = 0;
 
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
       const trimmed = lines[lineIndex].trim();
@@ -201,7 +213,7 @@
             shortTitle: extractHeadingTitle(trimmed, identifier),
             content: "",
             isAnnex: Boolean(structurePattern.isAnnex),
-            isAmendment: /amend|repeal|modif|abrog/i.test(trimmed),
+            isAmendment: false,
             isEmpty: true,
             source: CORE.sourceAnchorFromUnit(sourceUnit)
           });
@@ -216,118 +228,156 @@
     return CORE.dedupeBy(elements.sort((a, b) => a.position - b.position), element => `${element.canonicalId}|${element.position}`);
   }
 
-  function detectEnactmentClause(text, language) {
-    const markers = ENACTMENT_MARKERS[language] || ENACTMENT_MARKERS.en;
-    const firstBlock = String(text || "").slice(0, 3000);
+  function detectRecitals(text, language) {
+    const enactingMatch = text.match(ENACTING_MARKERS[language] || ENACTING_MARKERS.en);
+    const startMatch = text.match(RECITAL_START_MARKERS[language] || RECITAL_START_MARKERS.en);
+    const numberedStartMatch = text.match(/^\s*\(\d{1,3}\)\s+/m);
 
-    for (const marker of markers) {
-      const match = firstBlock.match(marker);
-      if (!match) continue;
+    if (!enactingMatch && !startMatch && !numberedStartMatch) return null;
 
-      const end = findFirstBodyPosition(text);
-      return {
-        id: "ENACTMENT",
-        canonicalId: "ENACTMENT",
-        type: "ENACTMENT",
-        level: -1,
-        heading: "Enactment Clause",
-        content: CORE.extractRegion(text, 0, end),
-        position: 0,
-        endPosition: end,
-        matched: match[0],
-        isEmpty: false
-      };
-    }
+    const startCandidates = [startMatch?.index, numberedStartMatch?.index].filter(index => typeof index === "number");
+    const start = startCandidates.length ? Math.min(...startCandidates) : 0;
+    const end = enactingMatch ? enactingMatch.index : findFirstBodyPosition(text);
+    if (end <= start) return null;
 
-    return null;
+    const content = CORE.extractRegion(text, start, end);
+    if (content.length < 40) return null;
+
+    return {
+      id: "RECITALS",
+      canonicalId: "RECITALS",
+      type: "RECITALS",
+      level: -1,
+      heading: "Recitals",
+      content,
+      position: start,
+      endPosition: end,
+      recitalCount: countRecitals(content),
+      isEmpty: false
+    };
   }
 
   function findFirstBodyPosition(text) {
-    const match = text.match(/\b(?:Part|PART|Section|SECTION|Schedule|SCHEDULE|Article|ARTICLE)\s+([IVXLCDM]+|\d+)/);
-    return match ? match.index : Math.min(1500, text.length);
+    const match = text.match(/\b(?:CHAPTER|Chapter|Article|ARTICLE|ANNEX|Annex)\s+([IVXLCDM]+|\d+)/);
+    return match ? match.index : Math.min(6000, text.length);
+  }
+
+  function countRecitals(content) {
+    const matches = content.match(/^\s*\(\d{1,3}\)\s+/gm);
+    return matches ? matches.length : 0;
+  }
+
+  function extractArticleParagraphs(text, elements) {
+    const paragraphs = [];
+
+    for (const article of elements.filter(element => element.type === "ART" && element.content)) {
+      const articleStart = article.position + article.heading.length;
+      const paragraphRegex = /^\s*(?:\((\d{1,3}[a-z]?)\)|(\d{1,3}[a-z]?)[.)])\s+(.+)$/gim;
+      let match;
+
+      while ((match = paragraphRegex.exec(article.content)) !== null) {
+        const identifier = match[1] || match[2];
+        const paragraphText = match[3].trim();
+        const normalizedId = `${article.normalizedId}-PARA-${CORE.normalizeNumber(identifier, "en")}`;
+        const canonicalId = `PARA-${normalizedId}`;
+
+        paragraphs.push({
+          id: canonicalId,
+          canonicalId,
+          type: "PARA",
+          prefix: "PARA",
+          level: 3,
+          identifier,
+          normalizedId,
+          sortKey: CORE.sortKey("PARA", normalizedId),
+          position: articleStart + match.index,
+          endPosition: null,
+          lineIndex: article.lineIndex,
+          heading: `Paragraph ${identifier}`,
+          content: paragraphText,
+          parentId: article.canonicalId,
+          isAnnex: false,
+          isAmendment: false,
+          isEmpty: paragraphText.length < 20,
+          source: article.source || CORE.sourceAnchorFromUnit(null)
+        });
+      }
+    }
+
+    return elements.concat(paragraphs).sort((a, b) => a.position - b.position);
+  }
+
+  function detectTranspositionArticles(elements, language) {
+    const indicators = TRANSPOSITION_PATTERNS[language] || TRANSPOSITION_PATTERNS.en;
+    const matches = [];
+
+    for (const element of elements) {
+      if (element.type !== "ART" || !element.content || element.isEmpty) continue;
+      const matched = indicators.filter(regex => regex.test(element.content));
+      if (matched.length >= 1) {
+        matches.push({
+          canonicalId: element.canonicalId,
+          type: "TRANSPOSITION",
+          heading: element.heading,
+          position: element.position,
+          indicatorCount: matched.length
+        });
+      }
+    }
+
+    return matches;
   }
 
   function extractMetadata(text, language, filename) {
     const firstBlock = String(text || "").split("\n").slice(0, 35).join("\n");
     const lines = firstBlock.split("\n");
     let title = CORE.titleFromFilename(filename);
-    let shortTitle = null;
-    let jurisdiction = null;
+    let directiveNumber = null;
+    let jurisdiction = /European\s+Union|\(EU\)|\bEU\b/i.test(firstBlock) ? "European Union" : null;
     let adoptionDate = null;
-    let actNumber = null;
+    let adoptingBody = null;
+    let transpositionDeadline = null;
 
-    const shortTitleMatch = String(text || "").match(/\bThis\s+Act\s+may\s+be\s+cited\s+as\s+(?:the\s+)?(.+?)(?:\.|\n)/i);
-    if (shortTitleMatch) {
-      shortTitle = shortTitleMatch[1].trim();
-      title = shortTitle;
-    }
-
-    const actNumberMatch = firstBlock.match(/\b(?:Act\s+No\.?\s*\d+\s+of\s+\d{4}|Public\s+Law\s+\d{2,3}[-–]\d{1,4})\b/i);
-    if (actNumberMatch) actNumber = actNumberMatch[0];
+    const numberMatch = firstBlock.match(/\bDirective\s+\(?(?:EU|EC|EEC)?\)?\s*(?:No\.?\s*)?(\d{4}\/\d{1,4}\/?(?:EU|EC|EEC)?)\b/i);
+    if (numberMatch) directiveNumber = `Directive ${numberMatch[1]}`;
 
     for (const line of lines) {
       const trimmed = line.trim();
-      if (trimmed.length < 10 || trimmed.length > 220) continue;
-      if (/\b(Act|Statute|Law|Code|Bill)\b/i.test(trimmed) || trimmed === trimmed.toUpperCase()) {
-        title = title || trimmed;
+      if (trimmed.length < 15 || trimmed.length > 260) continue;
+      const letters = trimmed.replace(/[^A-Za-zÀ-ÿ]/g, "");
+      const uppercase = trimmed.replace(/[^A-ZÀ-Ý]/g, "");
+      if (letters && (uppercase.length / Math.max(letters.length, 1) > 0.55 || /\bDirective\b/i.test(trimmed))) {
+        title = trimmed;
         break;
       }
     }
 
-    const jurisdictionPatterns = [
-      [/\b(?:United\s+Kingdom|UK|Parliament\s+of\s+the\s+United\s+Kingdom)\b/i, "United Kingdom"],
-      [/\b(?:United\s+States|Congress|USC|U\.S\.C\.|Public\s+Law)\b/i, "United States"],
-      [/\b(?:Canada|Parliament\s+of\s+Canada)\b/i, "Canada"],
-      [/\b(?:Australia|Commonwealth\s+of\s+Australia)\b/i, "Australia"],
-      [/\b(?:France|République\s+française|Assemblée\s+nationale|Sénat)\b/i, "France"],
-      [/\b(?:Germany|Deutschland|Bundestag|Bundesrepublik)\b/i, "Germany"]
-    ];
+    const bodyMatch = firstBlock.match(/\b(European\s+Parliament\s+and\s+(?:of\s+)?the\s+Council|Council\s+of\s+the\s+European\s+Union|European\s+Commission)\b/i);
+    if (bodyMatch) adoptingBody = bodyMatch[1];
 
-    const jurisdictionMatch = jurisdictionPatterns.find(([regex]) => regex.test(firstBlock));
-    if (jurisdictionMatch) jurisdiction = jurisdictionMatch[1];
-
-    const dateMatch = firstBlock.match(/\b\d{1,2}\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b/i) ||
-      firstBlock.match(/\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b/);
+    const dateMatch = firstBlock.match(/\b\d{1,2}\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b/i);
     if (dateMatch) adoptionDate = dateMatch[0];
 
+    const deadlineMatch = text.match(/\b(?:by|before|no\s+later\s+than|from)\s+(\d{1,2}\s+\w+\s+\d{4}|\d{4}[-/.]\d{1,2}[-/.]\d{1,2})\b/i);
+    if (deadlineMatch && /transpos|Member States shall|adopt and publish/i.test(CORE.extractContext(text, deadlineMatch.index, deadlineMatch[0], 140))) {
+      transpositionDeadline = deadlineMatch[1];
+    }
+
     return {
-      title: title || "Untitled Statute",
-      shortTitle,
+      title: title || directiveNumber || "Untitled Directive",
       jurisdiction,
       adoptionDate,
-      actNumber,
       language,
-      sourceFilename: filename || null
+      sourceFilename: filename || null,
+      directiveNumber,
+      adoptingBody,
+      transpositionDeadline
     };
-  }
-
-  function detectCommencement(elements, text) {
-    const candidates = elements.filter(element =>
-      /\b(commencement|coming\s+into\s+force|comes\s+into\s+force|enters\s+into\s+force)\b/i.test(`${element.heading}\n${element.content}`)
-    );
-
-    return candidates.map(element => ({
-      canonicalId: element.canonicalId,
-      heading: element.heading,
-      position: element.position,
-      context: CORE.preview(element.content || CORE.extractContext(text, element.position, element.heading, 180), 260)
-    }));
-  }
-
-  function detectAmendmentSignals(elements) {
-    return elements
-      .filter(element => /\b(amend|repeal|substituted|inserted|omitted|modif|abrog)\b/i.test(`${element.heading}\n${element.content}`))
-      .map(element => ({
-        canonicalId: element.canonicalId,
-        heading: element.heading,
-        position: element.position,
-        detectedBy: "keyword"
-      }));
   }
 
   function extractHeadingTitle(heading, identifier) {
     const escaped = CORE.escapeRegex(String(identifier || ""));
-    const regex = new RegExp(`^(?:PART|Part|SCHEDULE|Schedule|DIVISION|Division|SECTION|Section|ARTICLE|Article|§)\\s*${escaped}\\s*[.\\-—:]*\\s*`, "i");
+    const regex = new RegExp(`^(?:CHAPTER|Chapter|SECTION|Section|ARTICLE|Article|ANNEX|Annex|Chapitre|Article|Annexe)\\s+${escaped}\\s*[.\\-—:]*\\s*`, "i");
     const title = String(heading || "").replace(regex, "").trim();
     return title || null;
   }
@@ -335,10 +385,10 @@
   function summarize(parsed) {
     const parts = [];
     if (parsed.metadata.title) parts.push(parsed.metadata.title);
-    if (parsed.metadata.actNumber) parts.push(parsed.metadata.actNumber);
-    parts.push(`${parsed.stats.totalArticles} core unit(s)`);
-    if (parsed.stats.hasEnactmentClause) parts.push("enactment clause detected");
-    if (parsed.commencement.length > 0) parts.push(`${parsed.commencement.length} commencement signal(s)`);
+    if (parsed.metadata.directiveNumber) parts.push(parsed.metadata.directiveNumber);
+    parts.push(`${parsed.stats.totalArticles} article(s)`);
+    if (parsed.stats.hasRecitals) parts.push("recitals detected");
+    if (parsed.stats.transpositionArticleCount > 0) parts.push(`${parsed.stats.transpositionArticleCount} transposition article(s)`);
     return parts.join(" · ");
   }
 
@@ -346,13 +396,12 @@
     VERSION,
     DOCUMENT_TYPE,
     STRUCTURAL_PATTERNS,
-    STATUTE_REFERENCE_PATTERNS,
+    DIRECTIVE_REFERENCE_PATTERNS,
     parse,
     summarize,
     discoverStructure,
-    detectEnactmentClause,
-    extractMetadata,
-    detectCommencement,
-    detectAmendmentSignals
+    detectRecitals,
+    detectTranspositionArticles,
+    extractMetadata
   };
 });

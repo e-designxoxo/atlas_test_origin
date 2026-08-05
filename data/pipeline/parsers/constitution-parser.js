@@ -13,7 +13,7 @@
  */
 
 (function initAtlasConstitutionParser(root, factory) {
-  if (typeof module !== "undefined" && module.exports) {
+  if (typeof module !== "undefined" && module.exports && typeof require === "function") {
     module.exports = factory(require("./_core.js"));
     return;
   }
@@ -264,8 +264,18 @@
   }
 
   function extractMetadata(text, language, filename) {
-    const firstLines = String(text || "").split("\n").slice(0, 20);
+    const fullText = String(text || "");
+    const firstLines = fullText.split("\n").slice(0, 20);
     const firstBlock = firstLines.join("\n");
+    const canonical = detectCanonicalConstitution(fullText);
+
+    if (canonical) {
+      return {
+        ...canonical,
+        language,
+        sourceFilename: filename || null
+      };
+    }
 
     return {
       title: detectTitle(firstLines) || CORE.titleFromFilename(filename) || "Untitled Constitution",
@@ -276,16 +286,17 @@
     };
   }
 
-    function detectCanonicalConstitution(text) {
-    const sample = String(text || "");
+  function detectCanonicalConstitution(text) {
+    const sample = String(text || "").slice(0, 24000);
 
-    if (/\bWe\s+the\s+People\s+of\s+the\s+United\s+States\b/i.test(sample) &&
-        /\bestablish\s+this\s+Constitution\s+for\s+the\s+United\s+States\s+of\s+America\b/i.test(sample)) {
+    if (isUsConstitutionCanonicalText(sample)) {
       return {
         title: "Constitution of the United States",
         shortTitle: "U.S. Constitution",
         jurisdiction: "United States",
+        authority: "Constituent authority",
         adoptionDate: "17 September 1787",
+        dateForce: "21 June 1788",
         status: "In force, as amended",
         reference: "US-CONST"
       };
@@ -296,6 +307,7 @@
         title: "Constitution du 4 octobre 1958",
         shortTitle: "Constitution française",
         jurisdiction: "France",
+        authority: "Constituent authority",
         adoptionDate: "4 octobre 1958",
         status: "In force, as amended",
         reference: "FR-CONST-1958"
@@ -305,11 +317,30 @@
     return null;
   }
 
+  function isUsConstitutionCanonicalText(sample) {
+    const text = String(sample || "");
+    const hasFullPreamble = /\bWe\s+the\s+People\s+of\s+the\s+United\s+States\b/i.test(text);
+    const hasPreambleTail = /\bsecure\s+the\s+Blessings\s+of\s+Liberty\b/i.test(text) &&
+      /\bordain\s+and\s+establish\s+this\s+Constitution\s+for\s+the\s+United\b/i.test(text);
+    const hasInstitutionalArticles = /\bArticle\s+I\b/i.test(text) &&
+      /\bArticle\s+II\b/i.test(text) &&
+      /\bArticle\s+III\b/i.test(text);
+    const hasBillOfRights = /\bAmendment\s+I\b/i.test(text) &&
+      /\bAmendment\s+II\b/i.test(text) &&
+      /\bAmendment\s+III\b/i.test(text);
+
+    return (hasFullPreamble || hasPreambleTail) &&
+      /\bConstitution\b/i.test(text) &&
+      /\bUnited\s+States(?:\s+of\s+America)?\b/i.test(text) &&
+      (hasInstitutionalArticles || hasBillOfRights);
+  }
+
   function detectTitle(lines) {
     for (const line of lines) {
       const trimmed = line.trim();
       if (trimmed.length < 10 || trimmed.length > 220) continue;
       if (/^(Article|Section|Part|Chapter|Title|Titre|Chapitre|Artículo|Artikel)\b/i.test(trimmed)) continue;
+      if (looksLikeConstitutionPreambleFragment(trimmed)) continue;
 
       const letters = trimmed.replace(/[^A-Za-zÀ-ÿ]/g, "");
       const uppercase = trimmed.replace(/[^A-ZÀ-Ý]/g, "");
@@ -319,6 +350,10 @@
     }
 
     return null;
+  }
+
+  function looksLikeConstitutionPreambleFragment(text) {
+    return /\b(?:we\s+the\s+people|in\s+order\s+to|more\s+perfect\s+union|establish\s+justice|domestic\s+tranquility|common\s+defence|general\s+welfare|blessings\s+of\s+liberty|do\s+ordain|establish\s+this\s+constitution)\b/i.test(String(text || ""));
   }
 
   function detectJurisdiction(text) {

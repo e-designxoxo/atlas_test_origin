@@ -1,23 +1,24 @@
-/* ═══════════════════════════════════════════════════════════════
-     ATLAS – INGESTION PIPELINE – Text extractor 
-   ═══════════════════════════════════════════════════════════════ */
-
 /**
+ * ATLAS Ingestion Pipeline - Text Extractor
+ *
  * Browser-side V1 extractor for uploaded legal source files.
- 
- ═══════  Responsibilities: ═══════
+ *
+ * This file is the first gate of the ATLAS ingestion pipeline. It must be
+ * conservative: read the file, preserve source truth, normalize a copy for
+ * downstream parsing, and avoid doing legal reasoning.
+ *
+ * Responsibilities:
  * - read supported file types
  * - preserve source truth
  * - produce normalized text for downstream parsing
  * - expose source units when the format gives us structure
  *
-
- ═══════  Non-Responsibilities: ═══════
+ * Non-responsibilities:
  * - legal structure parsing
  * - concept detection
  * - relationship building
  * - legal reasoning
- 
+ *
  * Supported V1 formats:
  * - TXT
  * - HTML / HTM
@@ -26,7 +27,7 @@
 
 // UMD-style wrapper: works in a browser script tag and in Node/CommonJS tests.
 (function initAtlasExtractor(root, factory) {
-  if (typeof module !== "undefined" && module.exports) {
+  if (typeof module !== "undefined" && module.exports && typeof require === "function") {
     module.exports = factory();
     return;
   }
@@ -35,14 +36,16 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function createAtlasExtractor() {
   "use strict";
 
-// Version the extractor contract so downstream modules can detect changes.
+  // Version the extractor contract so downstream modules can detect changes.
   const VERSION = "1.1.0";
 
-// Browser extraction should stay bounded. Larger files belong to a backend.
+  // Browser extraction should stay bounded. Larger files belong to a backend.
   const DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
+
+  // Extension support is intentionally narrow in V1.
   const SUPPORTED_EXTENSIONS = new Set(["txt", "html", "htm", "pdf"]);
 
-// Extension support is intentionally narrow in V1.
+  // Canonical ATLAS format labels returned in extraction results.
   const FORMAT_BY_EXTENSION = {
     txt: "text/plain",
     html: "text/html",
@@ -50,7 +53,7 @@
     pdf: "application/pdf"
   };
 
-// Remove executable/non-text browser artifacts from HTML sources.
+  // Remove executable/non-text browser artifacts from HTML sources.
   const REMOVABLE_HTML_SELECTORS = [
     "script",
     "style",
@@ -60,7 +63,7 @@
     "iframe"
   ];
 
-// Tags that usually mark legal/source text blocks or layout blocks.
+  // Tags that usually mark legal/source text blocks or layout blocks.
   const STRUCTURAL_TAGS = new Set([
     "ADDRESS",
     "ARTICLE",
@@ -105,6 +108,10 @@
   /**
    * Extract a file into an ATLAS source payload.
    *
+   * The returned object is the contract used by later pipeline stages:
+   * detector, parser, metadata extractor, concept matcher, and relationship
+   * builder. Keep this result source-grounded.
+   *
    * @param {File|Blob} file
    * @param {object} [options]
    * @param {number} [options.maxBytes]
@@ -119,8 +126,8 @@
 
     let payload;
 
-// Route extraction by extension. Detector.js can become smarter later,
-// but extractor V1 keeps format routing simple and explicit.
+    // Route extraction by extension. Detector.js can become smarter later,
+    // but extractor V1 keeps format routing simple and explicit.
     switch (fileInfo.extension) {
       case "txt":
         payload = await extractTXT(file, fileInfo, warnings);
@@ -136,9 +143,8 @@
         throw unsupportedFormatError(fileInfo.extension);
     }
 
-// rawText is the extraction as produced by the adapter.
-// normalizedText is the parser-friendly copy.
-    
+    // rawText is the extraction as produced by the adapter.
+    // normalizedText is the parser-friendly copy.
     const rawText = payload.rawText || "";
     const normalizedText = normalizeText(rawText);
     const sourceUnits = Array.isArray(payload.sourceUnits) ? payload.sourceUnits : [];
@@ -167,6 +173,10 @@
     };
   }
 
+  /**
+   * TXT extraction is simple, but we still convert the text into source units
+   * so downstream modules do not depend on one huge wall of text.
+   */
   async function extractTXT(file, fileInfo, warnings) {
     const rawText = await readAsText(file);
     const sourceUnits = textToSourceUnits(rawText, fileInfo);
@@ -185,11 +195,10 @@
     };
   }
 
-
   /**
-                                               * TXT extraction is simple, but we still convert the text into source units
-                                               * so downstream modules do not depend on one huge wall of text.
-*/
+   * HTML extraction uses DOMParser, not regex, because official legal HTML
+   * often contains nested tables, anchors, classes, and generated metadata.
+   */
   async function extractHTML(file, fileInfo, warnings) {
     const html = await readAsText(file);
 
@@ -208,21 +217,20 @@
       });
     }
 
-// Remove code/media artifacts, but do not remove legal source containers.
+    // Remove code/media artifacts, but do not remove legal source containers.
     for (const selector of REMOVABLE_HTML_SELECTORS) {
       doc.querySelectorAll(selector).forEach(element => element.remove());
     }
 
     const body = doc.body || doc.documentElement;
     if (!body) {
-      return {  
-        extractionMethod: isPdf2Html ? "browser-pdf2html-layout" : "browser-domparser",
+      return {
+        extractionMethod: "browser-domparser",
         rawText: "",
         sourceUnits: []
       };
     }
 
-       
     const isPdf2Html = isPdf2HtmlDocument(doc, html);
     const sourceUnits = isPdf2Html
       ? pdf2HtmlToSourceUnits(doc, fileInfo, warnings)
@@ -237,13 +245,13 @@
     }
 
     return {
-      extractionMethod: "browser-domparser",
+      extractionMethod: isPdf2Html ? "browser-pdf2html-layout" : "browser-domparser",
       rawText,
       sourceUnits
     };
   }
 
-/**
+  /**
    * PDF is intentionally an adapter boundary in V1.
    *
    * Browser MVP later: PDF.js.
@@ -261,13 +269,13 @@
       "Use official HTML or TXT for now. Future adapters should return page, block, and bounding-box metadata."
     );
   }
-  
-/**
- * Convert HTML into source units.
- *
- * A source unit is a traceable raw block. Parser.js will later turn these
- * raw blocks into legal nodes such as chapter, article, paragraph, point.
-*/
+
+  /**
+   * Convert HTML into source units.
+   *
+   * A source unit is a traceable raw block. Parser.js will later turn these
+   * raw blocks into legal nodes such as chapter, article, paragraph, point.
+   */
   function htmlToSourceUnits(rootElement, fileInfo) {
     const units = [];
     let order = 0;
@@ -298,19 +306,19 @@
 
       const tagName = element.tagName;
 
-// Headings are self-contained structural hints.
+      // Headings are self-contained structural hints.
       if (HEADING_TAGS.has(tagName)) {
         addUnit(element, element.textContent, "heading");
         return;
       }
 
-// Lists often express legal points, obligations, or criteria.
+      // Lists often express legal points, obligations, or criteria.
       if (tagName === "LI") {
         addUnit(element, element.textContent, "list-item");
         return;
       }
 
-// EUR-Lex and many official sources use tables for recitals/numbering.
+      // EUR-Lex and many official sources use tables for recitals/numbering.
       if (tagName === "TR") {
         const cells = Array.from(element.children)
           .filter(child => child.tagName === "TD" || child.tagName === "TH")
@@ -323,17 +331,18 @@
         }
       }
 
-// Paragraph-like units are the most important raw material for parser.js.
+      // Paragraph-like units are the most important raw material for parser.js.
       if (tagName === "P" || tagName === "PRE" || tagName === "CAPTION") {
         addUnit(element, element.textContent, tagName === "CAPTION" ? "caption" : "paragraph");
         return;
       }
 
+      // Otherwise keep walking down until we find meaningful source blocks.
       for (const child of element.children) {
         walk(child);
       }
 
-// Last-resort capture for empty-container structural tags with text.
+      // Last-resort capture for empty-container structural tags with text.
       if (element.children.length === 0 && STRUCTURAL_TAGS.has(tagName)) {
         addUnit(element, element.textContent, inferHtmlUnitType(element));
       }
@@ -415,6 +424,10 @@
       .replace(/([A-Z])\s+([a-z])\s+([a-z]{2,})\b/g, "$1$2$3")
       .replace(/\b([A-Za-z]{3,})\s+([a-z])\b/g, repairSplitWord)
       .replace(/\b([A-Za-z])\s+([A-Z][a-z]{2,})\b/g, repairLeadingInitialSplit)
+      .replace(/\b(a|an)(?=[A-Z][a-z])/g, "$1 ")
+      .replace(/\b([A-Za-z]{4,}s)(a|an)(?=\s+[A-Z])/g, "$1 $2")
+      .replace(/\b(become|appoint|constitute|expel|receive|make|provide|maintain|hold|keep|take)(a|an)(?=\s+[A-Z])/gi, "$1 $2")
+      .replace(/\b(be|to|for|as|is|of|in|on|by|or|and|but)(privileged|fore|cause|long|side|tween|neath|yond|half)\b/gi, repairJoinedFunctionWord)
       .replace(/\s+([,.;:!?])/g, "$1"));
   }
 
@@ -430,6 +443,10 @@
     return `${initial}${rest}`;
   }
 
+  function repairJoinedFunctionWord(match, head, tail) {
+    return `${head} ${tail}`;
+  }
+
   function isPdf2HtmlNoise(text) {
     if (/^(?:cover|\d+)\.pdf$/i.test(text)) return true;
     if (/^data:image\//i.test(text)) return true;
@@ -438,8 +455,8 @@
   }
 
   /**
-Convert plain text into source units by paragraph-like spacing.
-**/
+   * Convert plain text into source units by paragraph-like spacing.
+   */
   function textToSourceUnits(text, fileInfo) {
     return normalizeText(text)
       .split(/\n{2,}/)
@@ -461,6 +478,9 @@ Convert plain text into source units by paragraph-like spacing.
       }));
   }
 
+  /**
+   * Avoid duplicate neighboring units caused by nested legal HTML structures.
+   */
   function dedupeAdjacentUnits(units) {
     const result = [];
     for (const unit of units) {
@@ -470,6 +490,8 @@ Convert plain text into source units by paragraph-like spacing.
       }
       result.push(unit);
     }
+
+    // Re-number after deduplication so IDs remain compact and ordered.
     return result.map((unit, index) => ({
       ...unit,
       id: `raw-${String(index + 1).padStart(5, "0")}`,
@@ -487,11 +509,13 @@ Convert plain text into source units by paragraph-like spacing.
     return "block";
   }
 
+  /**
+   * Lightweight hints only. Parser.js owns real legal structure detection.
+   */
   function inferTextUnitType(text) {
     if (/^(chapter|title|section)\b/i.test(text)) return "heading";
     if (/^article\s+([ivxlcdm]+|\d+)/i.test(text)) return "heading";
     if (/^amendment\s+([ivxlcdm]+|\d+)/i.test(text)) return "heading";
-
     if (/^\(?\d+\)?\s+/.test(text)) return "paragraph";
     return "block";
   }
@@ -540,6 +564,9 @@ Convert plain text into source units by paragraph-like spacing.
     return new Error(`Unsupported file format: ${label}. Accepted: .txt, .html, .htm, .pdf`);
   }
 
+  /**
+   * Browser path uses FileReader. Node/test path uses Blob.text().
+   */
   function readAsText(file, encoding = "UTF-8") {
     if (typeof FileReader === "undefined") {
       return readBlobTextFallback(file);
@@ -560,6 +587,12 @@ Convert plain text into source units by paragraph-like spacing.
     throw new Error("This environment cannot read File/Blob text.");
   }
 
+  /**
+   * Parser-friendly normalization.
+   *
+   * Important: this does not replace rawText. ATLAS keeps rawText so official
+   * wording is not destroyed by cleanup.
+   */
   function normalizeText(text) {
     return String(text || "")
       .replace(/\r\n/g, "\n")
@@ -628,4 +661,3 @@ Convert plain text into source units by paragraph-like spacing.
  * @property {Array<{code: string, message: string}>} warnings
  * @property {object} stats
  */
-
