@@ -25,3 +25,25 @@
 ## Crazy
 - Interactive legal globe
 - Debate between interpretations
+
+
+
+
+
+
+
+---
+
+## To Ourselves 🫂
+
+If you're reading this months or years after writing it, remember:
+
+ATLAS did not begin because we wanted to build an AI.
+
+It began because we believed legal knowledge could be represented more faithfully.
+
+Keep building software that deserves the trust of the people who use it.
+
+The technology will change.
+
+The mission should not.
