@@ -38,12 +38,15 @@
 
 If you're reading this months or years after writing it, remember:
 
-ATLAS did not begin because we wanted to build an AI.
+ATLAS did not begin because we wanted to build an app, or a business.
+
 
 It began because we believed legal knowledge could be represented more faithfully.
 
+More accessible, to all eyes and all horizons.  
+
 Keep building software that deserves the trust of the people who use it.
 
-The technology will change.
+The technology will change. 
 
 The mission should not.
