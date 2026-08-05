@@ -831,14 +831,203 @@
 
       .error-actions button.secondary {
         border: 1px solid var(--border);
-        background: var(--card);
+        background: transparent;
         color: var(--muted);
       }
 
-      .error-actions button.secondary {
+      /* Document type review */
+      .review-container {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 42px 8px;
+      }
+
+      .review-panel {
+        border: 1px solid rgba(181, 138, 58, 0.34);
+        border-left: 4px solid var(--amber);
+        border-radius: 12px;
+        background: var(--card);
+        padding: 24px;
+      }
+
+      .review-panel h2 {
+        margin: 0 0 8px;
+        color: var(--ink);
+        font-family: var(--serif);
+        font-size: 26px;
+      }
+
+      .review-panel p {
+        color: var(--muted);
+        font-family: var(--sans);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .review-summary {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin: 18px 0;
+      }
+
+      .review-stat {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        background: rgba(255,255,255,0.56);
+      }
+
+      .review-stat span {
+        display: block;
+        color: var(--dimmer);
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .review-stat strong {
+        display: block;
+        margin-top: 5px;
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 14px;
+      }
+
+      .type-choice-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin: 18px 0;
+      }
+
+      .type-choice {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        background: rgba(255,255,255,0.62);
+        color: var(--ink);
+        text-align: left;
+        transition: all 0.15s;
+      }
+
+      .type-choice:hover,
+      .type-choice.selected {
+        border-color: var(--amber);
+        background: rgba(181, 138, 58, 0.10);
+      }
+
+      .type-choice strong {
+        display: block;
+        font-family: var(--sans);
+        font-size: 13px;
+      }
+
+      .type-choice span {
+        display: block;
+        margin-top: 5px;
+        color: var(--dimmer);
+        font-family: var(--mono);
+        font-size: 10px;
+      }
+
+      .signal-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .signal-item {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        background: rgba(255,255,255,0.55);
+        color: var(--muted);
+        font-family: var(--sans);
+        font-size: 12px;
+      }
+
+      .review-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .review-actions button {
+        border-radius: 8px;
+        padding: 10px 14px;
+        background: var(--teal);
+        color: #fff;
+        font-family: var(--sans);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .review-actions button.secondary {
         border: 1px solid var(--border);
         background: transparent;
         color: var(--muted);
+      }
+
+      .metadata-form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .metadata-field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .metadata-field.full {
+        grid-column: 1 / -1;
+      }
+
+      .metadata-field label {
+        color: var(--dimmer);
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .metadata-field input,
+      .metadata-field select {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: rgba(255,255,255,0.72);
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 13px;
+        padding: 10px 12px;
+        outline: none;
+      }
+
+      .metadata-field input:focus,
+      .metadata-field select:focus {
+        border-color: var(--teal);
+        box-shadow: 0 0 0 3px rgba(68,127,128,0.12);
+      }
+
+      .metadata-note {
+        margin-top: 14px;
+        border: 1px solid rgba(68,127,128,0.18);
+        border-radius: 8px;
+        background: rgba(68,127,128,0.07);
+        color: var(--muted);
+        font-family: var(--sans);
+        font-size: 12px;
+        line-height: 1.55;
+        padding: 12px;
+      }
+
+      @media (max-width: 768px) {
+        .metadata-form { grid-template-columns: 1fr; }
       }
 
       /* ═══════════ FICHE ═══════════ */ 
@@ -1769,55 +1958,23 @@
     <!-- Hidden file input -->
     <input type="file" accept=".txt,.html,.htm,.pdf,.docx" class="hidden-input" id="hiddenFileInput" onchange="handleFileSelect(event)">
 
-    <!-- ===================== BEFORE FIX - TEST ============================
-    <script src="data/pipeline/extractor.js"></script>
-    <script src="data/pipeline/document-detector.js"></script>
-    <script src="data/pipeline/parsers/parser-core.js"></script>
-    <script src="data/pipeline/parsers/constitution-parser.js"></script>
-    <script src="data/pipeline/parsers/regulation-parser.js"></script>
-    <script src="data/pipeline/parsers/directive-parser.js"></script>
-    <script src="data/pipeline/parsers/treaty-parser.js"></script>
-    <script src="data/pipeline/parsers/statute-parser.js"></script>
-    <script src="data/pipeline/parsers/judgment-parser.js"></script>
-    <script src="data/pipeline/parsers/contract-parser.js"></script>
-    <script src="data/pipeline/parsers/generic-parser.js"></script>
-    <script src="data/pipeline/fiche-generator.js"></script>
-    <script src="data/pipeline/pipeline.js"></script>                     -->
+    <script src="data/pipeline/schema.js?v=20260803-4"></script>
+    <script src="data/pipeline/identifier.js?v=20260803-4"></script>
+    <script src="data/pipeline/validators.js?v=20260803-4"></script>
+    <script src="data/pipeline/extractor.js?v=20260803-4"></script>
+    <script src="data/pipeline/document-detector.js?v=20260803-4"></script>
+    <script src="data/pipeline/parsers/parser-core.js?v=20260803-4"></script>
+    <script src="data/pipeline/parsers/constitution-parser.js?v=20260803-4"></script>
+    <script src="data/pipeline/parsers/regulation-parser.js?v=20260803-4"></script>
+    <script src="data/pipeline/parsers/directive-parser.js?v=20260803-4"></script>
+    <script src="data/pipeline/parsers/treaty-parser.js?v=20260803-4"></script>
+    <script src="data/pipeline/parsers/statute-parser.js?v=20260803-4"></script>
+    <script src="data/pipeline/parsers/judgment-parser.js?v=20260803-4"></script>
+    <script src="data/pipeline/parsers/contract-parser.js?v=20260803-4"></script>
+    <script src="data/pipeline/parsers/generic-parser.js?v=20260803-4"></script>
+    <script src="data/pipeline/fiche-generator.js?v=20260803-4"></script>
+    <script src="data/pipeline/pipeline.js?v=20260803-4"></script>
 
- <!-- ============ TEST FIX - CACHE CLEAN ================= -->
-
- <!-- ============  FIX 2 - NEW CACHE  ================= 
-    <script src="data/pipeline/extractor.js?v=20260730-2"></script>
-    <script src="data/pipeline/document-detector.js?v=20260730-2"></script>
-    <script src="data/pipeline/parsers/parser-core.js?v=20260730-2"></script>
-    <script src="data/pipeline/parsers/constitution-parser.js?v=20260730-2"></script>
-    <script src="data/pipeline/parsers/regulation-parser.js?v=20260730-2"></script>
-    <script src="data/pipeline/parsers/directive-parser.js?v=20260730-2"></script>
-    <script src="data/pipeline/parsers/treaty-parser.js?v=20260730-2"></script>
-    <script src="data/pipeline/parsers/statute-parser.js?v=20260730-2"></script>
-    <script src="data/pipeline/parsers/judgment-parser.js?v=20260730-2"></script>
-    <script src="data/pipeline/parsers/contract-parser.js?v=20260730-2"></script>
-    <script src="data/pipeline/parsers/generic-parser.js?v=20260730-2"></script>
-    <script src="data/pipeline/fiche-generator.js?v=20260730-2"></script>
-    <script src="data/pipeline/pipeline.js?v=20260730-2"></script> -->
-
-    <script src="data/pipeline/schema.js?v=20260803-1"></script>
-    <script src="data/pipeline/identifier.js?v=20260803-1"></script>
-    <script src="data/pipeline/validators.js?v=20260803-1"></script>
-    <script src="data/pipeline/extractor.js?v=20260803-1"></script>
-    <script src="data/pipeline/document-detector.js?v=20260803-1"></script>
-    <script src="data/pipeline/parsers/parser-core.js?v=20260803-1"></script>
-    <script src="data/pipeline/parsers/constitution-parser.js?v=20260803-1"></script>
-    <script src="data/pipeline/parsers/regulation-parser.js?v=20260803-1"></script>
-    <script src="data/pipeline/parsers/directive-parser.js?v=20260803-1"></script>
-    <script src="data/pipeline/parsers/treaty-parser.js?v=20260803-1"></script>
-    <script src="data/pipeline/parsers/statute-parser.js?v=20260803-1"></script>
-    <script src="data/pipeline/parsers/judgment-parser.js?v=20260803-1"></script>
-    <script src="data/pipeline/parsers/contract-parser.js?v=20260803-1"></script>
-    <script src="data/pipeline/parsers/generic-parser.js?v=20260803-1"></script>
-    <script src="data/pipeline/fiche-generator.js?v=20260803-1"></script>
-    <script src="data/pipeline/pipeline.js?v=20260803-1"></script>
-    
     <script>
       // ═══════════════════════════════════════════
       // DATA
@@ -1918,6 +2075,18 @@
         'Generating analysis fiche',
       ];
 
+      const REVIEW_REQUIRED_CONFIDENCE = 80;
+      const DOCUMENT_TYPE_CHOICES = [
+        { type: 'constitution', label: 'Constitution', hint: 'Foundational public law text' },
+        { type: 'regulation', label: 'EU Regulation', hint: 'Directly applicable EU act' },
+        { type: 'directive', label: 'EU Directive', hint: 'EU act requiring transposition' },
+        { type: 'treaty', label: 'Treaty', hint: 'International agreement' },
+        { type: 'statute', label: 'Statute / Act', hint: 'Domestic legislation' },
+        { type: 'judgment', label: 'Judgment', hint: 'Court or tribunal decision' },
+        { type: 'contract', label: 'Contract', hint: 'Private agreement' },
+        { type: 'unknown', label: 'Generic', hint: 'Readable fallback parser' }
+      ];
+
       // ═══════════════════════════════════════════
       // STATE
       // ═══════════════════════════════════════════
@@ -1935,6 +2104,10 @@
         currentPipelineResult: null,
         statusMessage: '',
         error: null,
+        pendingReview: null,
+        selectedReviewType: null,
+        pendingMetadataReview: null,
+        metadataDraft: null,
       };
 
       // ═══════════════════════════════════════════
@@ -1967,8 +2140,9 @@
 
       function renderStageTabs() {
         const tabs = document.querySelectorAll('#stageTabs .stage-tab');
+        const activeStage = state.stage === 'review' || state.stage === 'error' ? 'upload' : state.stage === 'metadata-review' ? 'fiche' : state.stage;
         tabs.forEach(tab => {
-          tab.classList.toggle('active', tab.dataset.stage === state.stage);
+          tab.classList.toggle('active', tab.dataset.stage === activeStage);
         });
       }
 
@@ -1978,7 +2152,9 @@
 
         if (state.activeNav === 'workspace') {
           if (state.stage === 'upload') main.innerHTML = renderUploadZone();
+          else if (state.stage === 'review') main.innerHTML = renderReviewView();
           else if (state.stage === 'processing') main.innerHTML = renderProcessingView();
+          else if (state.stage === 'metadata-review') main.innerHTML = renderMetadataReviewView();
           else if (state.stage === 'fiche') main.innerHTML = renderFiche();
           else if (state.stage === 'error') main.innerHTML = renderErrorView();
         } else if (state.activeNav === 'library') {
@@ -2160,6 +2336,102 @@
               <div class="error-actions">
                 <button type="button" onclick="setStage('upload')">Return to upload</button>
                 <button class="secondary" type="button" onclick="loadMiFIDDemo()">Open demo fiche</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderReviewView() {
+        const review = state.pendingReview || {};
+        const detection = review.detection || {};
+        const extraction = review.extraction || {};
+        const selectedType = state.selectedReviewType || detection.type || 'unknown';
+        const scores = new Map((detection.allScores || []).map(item => [item.type, item.score || 0]));
+        const signals = (detection.signals || []).slice(0, 6);
+
+        return `
+          <div class="review-container">
+            <div class="review-panel">
+              <p class="atlas-kicker">Document Type Review</p>
+              <h2>Confirm the legal family before parsing</h2>
+              <p>ATLAS found useful signals, but this document should be routed deliberately. Confirming the type prevents a weak detector guess from contaminating the fiche.</p>
+
+              <div class="review-summary">
+                <div class="review-stat"><span>File</span><strong>${escapeHTML(extraction.filename || 'Imported source')}</strong></div>
+                <div class="review-stat"><span>Suggested</span><strong>${escapeHTML(detection.label || 'Unknown')}</strong></div>
+                <div class="review-stat"><span>Confidence</span><strong>${detection.confidence || 0}%</strong></div>
+              </div>
+
+              <div class="type-choice-grid">
+                ${DOCUMENT_TYPE_CHOICES.map(choice => `
+                  <button class="type-choice ${choice.type === selectedType ? 'selected' : ''}" type="button" onclick="selectReviewType('${choice.type}')">
+                    <strong>${choice.label}</strong>
+                    <span>${scores.has(choice.type) ? `${scores.get(choice.type)} detector score` : choice.hint}</span>
+                  </button>
+                `).join('')}
+              </div>
+
+              <p class="atlas-kicker">Signals</p>
+              <div class="signal-list">
+                ${signals.length ? signals.map(signal => `
+                  <div class="signal-item">
+                    <strong>${escapeHTML(signal.description || signal.id || 'Matched signal')}</strong>
+                    <span>${escapeHTML(signal.docLabel || signal.docType || 'Document')} · weight ${signal.weight || 0} · ${signal.matchCount || 1} match(es)</span>
+                  </div>
+                `).join('') : '<div class="signal-item">No strong signal was found. Choose the safest parser manually.</div>'}
+              </div>
+
+              <div class="review-actions">
+                <button type="button" onclick="confirmReviewType()">Parse as ${escapeHTML(labelForDocumentType(selectedType))}</button>
+                <button class="secondary" type="button" onclick="setStage('upload')">Cancel</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderMetadataReviewView() {
+        const review = state.pendingMetadataReview || {};
+        const draft = state.metadataDraft || createMetadataDraft(review.fiche || state.currentFiche || MIFID_FICHE);
+        const identity = (review.result && review.result.identity) || {};
+        const detection = (review.result && review.result.detection) || {};
+        const warnings = ((review.result && review.result.warnings) || []).slice(0, 3);
+
+        return `
+          <div class="review-container">
+            <div class="review-panel">
+              <p class="atlas-kicker">Metadata Review</p>
+              <h2>Confirm the document identity</h2>
+              <p>ATLAS parsed the source. Before this fiche becomes trusted, confirm or correct the canonical fields used for citation, search, comparison, and future memory.</p>
+
+              <div class="review-summary">
+                <div class="review-stat"><span>Detected type</span><strong>${escapeHTML(labelForDocumentType(draft.type || 'unknown'))}</strong></div>
+                <div class="review-stat"><span>Detection</span><strong>${detection.confidence || 0}% confidence</strong></div>
+                <div class="review-stat"><span>Identity</span><strong>${identity.confidence ? `${identity.confidence.identity || 0}% confidence` : 'Review required'}</strong></div>
+              </div>
+
+              <div class="metadata-form">
+                ${metadataInput('fullTitle', 'Canonical title', draft.fullTitle, true)}
+                ${metadataInput('short', 'Short title', draft.short)}
+                ${metadataInput('ref', 'Reference / Citation ID', draft.ref)}
+                ${metadataSelect('type', 'Document type', draft.type)}
+                ${metadataInput('jurisdiction', 'Jurisdiction', draft.jurisdiction)}
+                ${metadataInput('body', 'Authority / Body', draft.body)}
+                ${metadataInput('dateAdopted', 'Adopted / Issued', draft.dateAdopted)}
+                ${metadataInput('dateForce', 'In force / Effective', draft.dateForce)}
+                ${metadataInput('status', 'Status', draft.status)}
+                ${metadataInput('field', 'Field', draft.field)}
+              </div>
+
+              <div class="metadata-note">
+                Source filename: ${escapeHTML(identity.sourceFilename || (review.result && review.result.extraction && review.result.extraction.filename) || 'Imported source')}
+                ${warnings.length ? `<br>Review warnings: ${warnings.map(warning => escapeHTML(warning.code || warning.message || String(warning))).join(', ')}` : '<br>No blocking identity warning was found.'}
+              </div>
+
+              <div class="review-actions">
+                <button type="button" onclick="confirmMetadataReview()">Confirm identity and open fiche</button>
+                <button class="secondary" type="button" onclick="setStage('upload')">Return to upload</button>
               </div>
             </div>
           </div>
@@ -2538,6 +2810,115 @@
         return `<span class="sev-badge" style="background:${bg}; color:${color};">${icons[map[sev].icon]} ${sev}</span>`;
       }
 
+      function escapeHTML(value) {
+        return String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function labelForDocumentType(type) {
+        const match = DOCUMENT_TYPE_CHOICES.find(choice => choice.type === type);
+        return match ? match.label : 'Generic';
+      }
+
+      function metadataInput(field, label, value, full = false) {
+        return `
+          <div class="metadata-field ${full ? 'full' : ''}">
+            <label for="metadata-${field}">${label}</label>
+            <input id="metadata-${field}" value="${escapeHTML(value || '')}" oninput="updateMetadataDraft('${field}', this.value)">
+          </div>
+        `;
+      }
+
+      function metadataSelect(field, label, value) {
+        return `
+          <div class="metadata-field">
+            <label for="metadata-${field}">${label}</label>
+            <select id="metadata-${field}" onchange="updateMetadataDraft('${field}', this.value)">
+              ${DOCUMENT_TYPE_CHOICES.map(choice => `<option value="${choice.type}" ${choice.type === value ? 'selected' : ''}>${choice.label}</option>`).join('')}
+            </select>
+          </div>
+        `;
+      }
+
+      function createMetadataDraft(fiche) {
+        const f = fiche || {};
+        return {
+          docType: f.docType || labelForDocumentType(f.type || 'unknown'),
+          type: f.type || 'unknown',
+          ref: f.ref || '',
+          fullTitle: f.fullTitle || '',
+          short: f.short || '',
+          jurisdiction: f.jurisdiction || '',
+          body: f.body || '',
+          dateAdopted: f.dateAdopted || '',
+          dateForce: f.dateForce || '',
+          field: f.field || '',
+          status: f.status || 'Parsed'
+        };
+      }
+
+      function updateMetadataDraft(field, value) {
+        if (!state.metadataDraft) state.metadataDraft = createMetadataDraft(state.currentFiche || MIFID_FICHE);
+        state.metadataDraft = { ...state.metadataDraft, [field]: value };
+      }
+
+      function applyMetadataDraftToFiche(fiche, draft) {
+        const cleanDraft = draft || createMetadataDraft(fiche);
+        return {
+          ...fiche,
+          ...cleanDraft,
+          docType: labelForDocumentType(cleanDraft.type || fiche.type || 'unknown')
+        };
+      }
+
+      function beginMetadataReview(result) {
+        const fiche = adaptPipelineFiche(result);
+        state.currentPipelineResult = result;
+        state.currentFiche = fiche;
+        state.metadataDraft = createMetadataDraft(fiche);
+        state.pendingMetadataReview = { result, fiche };
+        state.progress = 100;
+        state.phase = PROC_STEPS.length - 1;
+        state.statusMessage = 'Metadata review required';
+        state.pendingReview = null;
+        state.selectedReviewType = null;
+        state.stage = 'metadata-review';
+        render();
+      }
+
+      function confirmMetadataReview() {
+        if (!state.currentFiche) return;
+        const finalizedFiche = applyMetadataDraftToFiche(state.currentFiche, state.metadataDraft);
+        finalizeImportedFiche(finalizedFiche, state.currentPipelineResult);
+      }
+
+      function finalizeImportedFiche(fiche, result) {
+        state.currentFiche = fiche;
+        state.currentPipelineResult = result || state.currentPipelineResult;
+        state.activeDoc = {
+          id: (result && result.fiche && result.fiche.document && result.fiche.document.id) || 'uploaded-document',
+          title: fiche.fullTitle,
+          short: fiche.short,
+          type: fiche.type,
+          field: fiche.field,
+          date: fiche.dateAdopted,
+          connections: fiche.connections.length,
+          alerts: fiche.alerts.length,
+          status: fiche.status
+        };
+        state.pendingMetadataReview = null;
+        state.metadataDraft = null;
+        state.progress = 100;
+        state.phase = PROC_STEPS.length - 1;
+        state.statusMessage = 'Fiche generated';
+        state.stage = 'fiche';
+        render();
+      }
+
       function adaptPipelineFiche(result) {
         const fiche = result.fiche;
         const doc = fiche.document || {};
@@ -2567,7 +2948,6 @@
           jurisdiction: identity.jurisdiction || metadata.jurisdiction || 'Unknown',
           body: identity.authority || metadata.body || metadata.court || metadata.institution || 'Source document',
           dateAdopted: identity.date || metadata.adoptionDate || metadata.signatureDate || 'Unknown',
-          
           dateForce: metadata.dateForce || metadata.entryIntoForce || 'Unknown',
           field: metadata.field || 'Legal source',
           status: (doc.status && doc.status.label) || 'Parsed',
@@ -2595,8 +2975,6 @@
             code: String(metadata.jurisdiction || 'N/A').slice(0, 3).toUpperCase(),
             name: identity.jurisdiction || metadata.jurisdiction || 'Unknown',
             authority: identity.authority || metadata.body || metadata.court || 'Not detected',
-            
-            
             impl: 'Imported source',
             status: (doc.status && doc.status.label) || 'Parsed'
           }],
@@ -2613,6 +2991,10 @@
         state.searchQuery = '';
         state.expandedProvision = null;
         state.error = null;
+        state.pendingReview = null;
+        state.selectedReviewType = null;
+        state.pendingMetadataReview = null;
+        state.metadataDraft = null;
         render();
       }
 
@@ -2620,6 +3002,13 @@
         if (stage === 'processing') return; // Only triggered programmatically
         if (stage === state.stage) return;
         state.stage = stage;
+        if (stage === 'upload') {
+          state.error = null;
+          state.pendingReview = null;
+          state.selectedReviewType = null;
+          state.pendingMetadataReview = null;
+          state.metadataDraft = null;
+        }
         if (stage === 'fiche' && !state.activeDoc) {
           state.activeDoc = LIBRARY_DOCS[0];
           renderSidebarDocs();
@@ -2665,41 +3054,65 @@
         event.target.value = '';
       }
 
-      function handleFileSelect(event) {
-        const file = event.target.files[0];
-        if (file) processUploadedFile(file);
-        event.target.value = '';
+      function selectReviewType(type) {
+        if (!DOCUMENT_TYPE_CHOICES.some(choice => choice.type === type)) return;
+        state.selectedReviewType = type;
+        renderContent();
       }
-      
+
+      function shouldReviewDetection(detection) {
+        if (!detection) return true;
+        if (detection.type === 'unknown') return true;
+        if (detection.decision !== 'auto') return true;
+        return (detection.confidence || 0) < REVIEW_REQUIRED_CONFIDENCE;
+      }
+
+      async function confirmReviewType() {
+        if (!state.pendingReview || !state.pendingReview.extraction) return;
+        const confirmedType = state.selectedReviewType || state.pendingReview.detection?.type || 'unknown';
+        await runPipelineWithExtraction(state.pendingReview.extraction, {
+          confirmedType,
+          language: state.pendingReview.detection?.language,
+          reviewReason: 'user-confirmed'
+        });
+      }
+
       function checkAtlasRuntime() {
-        const expected = [
+        const critical = [
           ["ATLAS_Schema", "data/pipeline/schema.js"],
           ["ATLAS_Identifier", "data/pipeline/identifier.js"],
           ["ATLAS_Validators", "data/pipeline/validators.js"],
           ["ATLAS_Extractor", "data/pipeline/extractor.js"],
           ["ATLAS_DocumentDetector", "data/pipeline/document-detector.js"],
           ["ATLAS_ParserCore", "data/pipeline/parsers/parser-core.js"],
+          ["ATLAS_GenericParser", "data/pipeline/parsers/generic-parser.js"],
+          ["ATLAS_FicheGenerator", "data/pipeline/fiche-generator.js"],
+          ["ATLAS_Pipeline", "data/pipeline/pipeline.js"]
+        ];
+        const specializedParsers = [
           ["ATLAS_ConstitutionParser", "data/pipeline/parsers/constitution-parser.js"],
           ["ATLAS_RegulationParser", "data/pipeline/parsers/regulation-parser.js"],
           ["ATLAS_DirectiveParser", "data/pipeline/parsers/directive-parser.js"],
           ["ATLAS_TreatyParser", "data/pipeline/parsers/treaty-parser.js"],
           ["ATLAS_StatuteParser", "data/pipeline/parsers/statute-parser.js"],
           ["ATLAS_JudgmentParser", "data/pipeline/parsers/judgment-parser.js"],
-          ["ATLAS_ContractParser", "data/pipeline/parsers/contract-parser.js"],
-          ["ATLAS_GenericParser", "data/pipeline/parsers/generic-parser.js"],
-          ["ATLAS_FicheGenerator", "data/pipeline/fiche-generator.js"],
-          ["ATLAS_Pipeline", "data/pipeline/pipeline.js"]
+          ["ATLAS_ContractParser", "data/pipeline/parsers/contract-parser.js"]
         ];
-      
-        const missing = expected
+        const missing = critical
           .filter(([globalName]) => !window[globalName])
           .map(([globalName, filePath]) => `${globalName} (${filePath})`);
-      
+        const optionalMissing = specializedParsers
+          .filter(([globalName]) => !window[globalName])
+          .map(([globalName, filePath]) => `${globalName} (${filePath})`);
+
         return {
           ready: missing.length === 0,
           missing,
+          optionalMissing,
           detail: missing.length
             ? `Missing browser globals:\n${missing.join("\n")}`
+            : optionalMissing.length
+              ? `ATLAS browser runtime ready. Optional parser(s) missing:\n${optionalMissing.join("\n")}`
             : "ATLAS browser runtime ready."
         };
       }
@@ -2718,12 +3131,12 @@
           render();
           return;
         }
-        
+
         const runtime = checkAtlasRuntime();
         if (!runtime.ready) {
           state.error = {
             title: 'Pipeline scripts are not loaded',
-            message: 'The workspace could not find ATLAS_Pipeline on the page.',  // OR message: 'The workspace could not find every required ATLAS module on the page.',//
+            message: 'The workspace could not find every required ATLAS module on the page.',
             detail: runtime.detail
           };
           state.stage = 'error';
@@ -2731,10 +3144,52 @@
           return;
         }
 
+        try {
+          state.stage = 'processing';
+          state.progress = 5;
+          state.phase = 0;
+          state.statusMessage = `Extracting ${file.name}`;
+          state.currentFiche = null;
+          state.currentPipelineResult = null;
+          state.activeDoc = null;
+          state.error = null;
+          state.pendingReview = null;
+          state.selectedReviewType = null;
+          render();
+
+          const extraction = await window.ATLAS_Extractor.extract(file);
+          const detection = window.ATLAS_DocumentDetector.detect(extraction);
+
+          if (shouldReviewDetection(detection)) {
+            state.pendingReview = { extraction, detection };
+            state.selectedReviewType = detection.type && detection.type !== 'unknown' ? detection.type : 'judgment';
+            state.statusMessage = `${file.name} needs document-type confirmation.`;
+            state.stage = 'review';
+            render();
+            return;
+          }
+
+          await runPipelineWithExtraction(extraction, {
+            confirmedType: detection.type,
+            language: detection.language,
+            reviewReason: 'auto-confirmed'
+          });
+        } catch (error) {
+          state.error = {
+            title: 'Unexpected ingestion error',
+            message: 'ATLAS hit an unexpected browser-side exception.',
+            detail: error.message
+          };
+          state.stage = 'error';
+          render();
+        }
+      }
+
+      async function runPipelineWithExtraction(extraction, options = {}) {
         state.stage = 'processing';
         state.progress = 0;
         state.phase = 0;
-        state.statusMessage = `Preparing ${file.name}`;
+        state.statusMessage = `Parsing ${extraction.filename || 'source document'}`;
         state.currentFiche = null;
         state.currentPipelineResult = null;
         state.activeDoc = null;
@@ -2743,7 +3198,10 @@
         render();
 
         try {
-          const result = await window.ATLAS_Pipeline.process(file, {
+          const result = await window.ATLAS_Pipeline.process(extraction, {
+            skipExtraction: true,
+            confirmedType: options.confirmedType,
+            language: options.language,
             onProgress(progress) {
               state.progress = progress.progress || state.progress;
               state.phase = Math.min(PROC_STEPS.length - 1, Math.floor(state.progress / 20));
@@ -2764,23 +3222,7 @@
             return;
           }
 
-          state.currentFiche = adaptPipelineFiche(result);
-          state.activeDoc = {
-            id: result.fiche.document.id || 'uploaded-document',
-            title: state.currentFiche.fullTitle,
-            short: state.currentFiche.short,
-            type: state.currentFiche.type,
-            field: state.currentFiche.field,
-            date: state.currentFiche.dateAdopted,
-            connections: state.currentFiche.connections.length,
-            alerts: state.currentFiche.alerts.length,
-            status: state.currentFiche.status
-          };
-          state.progress = 100;
-          state.phase = PROC_STEPS.length - 1;
-          state.statusMessage = 'Fiche generated';
-          state.stage = 'fiche';
-          render();
+          beginMetadataReview(result);
         } catch (error) {
           state.error = {
             title: 'Unexpected ingestion error',
