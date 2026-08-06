@@ -26,7 +26,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function createAtlasConstitutionParser(CORE) {
   "use strict";
 
-  const VERSION = "1.1.0";
+  const VERSION = "1.2.0";
   const DOCUMENT_TYPE = "constitution";
   const MIN_ARTICLE_COUNT_WARNING = 3;
 
@@ -109,7 +109,10 @@
       return CORE.createEmptyParseResult({ startedAt, version: VERSION, documentType: DOCUMENT_TYPE, filename: normalized.filename, language, warnings });
     }
 
-    const elements = CORE.extractContent(text, rawElements);
+    const preliminaryElements = CORE.extractContent(text, rawElements);
+    const inlineSectionElements = discoverInlineSections(text, preliminaryElements, rawElements, language, normalized.sourceUnits);
+    const structuredElements = dedupeStructure(rawElements.concat(inlineSectionElements).sort((a, b) => a.position - b.position));
+    const elements = assignScopedParents(CORE.extractContent(text, structuredElements));
     const preamble = detectPreamble(text, elements, language);
     const allElements = preamble ? [preamble, ...elements] : elements;
     const references = CORE.scanCrossReferences(
@@ -173,7 +176,8 @@
 
           const normalizedId = CORE.normalizeNumber(identifier, language);
           const canonicalId = CORE.canonicalId(structurePattern.prefix, normalizedId);
-          const sourceUnit = CORE.findSourceUnitForHeading(trimmed, sourceUnits);
+          const heading = normalizeMatchedHeading(match[0], trimmed, structurePattern);
+          const sourceUnit = CORE.findSourceUnitForHeading(heading, sourceUnits) || CORE.findSourceUnitForHeading(trimmed, sourceUnits);
 
           elements.push({
             id: canonicalId,
@@ -184,10 +188,10 @@
             identifier: String(identifier).trim(),
             normalizedId,
             sortKey: CORE.sortKey(structurePattern.prefix, normalizedId),
-            position,
+            position: position + match.index,
             endPosition: null,
             lineIndex,
-            heading: trimmed,
+            heading,
             content: "",
             isAnnex: Boolean(structurePattern.isAnnex),
             isAmendment: Boolean(structurePattern.isAmendment),
@@ -205,6 +209,17 @@
     return dedupeStructure(elements.sort((a, b) => a.position - b.position));
   }
 
+  function normalizeMatchedHeading(rawMatch, line, structurePattern) {
+    const matchText = String(rawMatch || "").trim();
+    if (!matchText) return String(line || "").trim();
+
+    if (["ART", "SEC", "CL", "AMEND", "TITLE", "CH", "PART", "SCHEDULE"].includes(structurePattern.prefix)) {
+      return /[.]$/.test(matchText) ? matchText : `${matchText}.`;
+    }
+
+    return matchText;
+  }
+
   function getEffectiveLevel(structurePattern, identifier) {
     if (structurePattern.prefix === "ART" && /^[IVXLCDM]+$/i.test(String(identifier || ""))) {
       return 1;
@@ -219,7 +234,7 @@
     for (const element of elements) {
       const previous = result[result.length - 1];
 
-      if (previous && previous.lineIndex === element.lineIndex) {
+      if (previous && previous.lineIndex === element.lineIndex && Math.abs(previous.position - element.position) < 8) {
         if (element.level > previous.level || (element.type === "PREAMBLE" && previous.type !== "PREAMBLE")) {
           result[result.length - 1] = element;
         }
@@ -235,6 +250,132 @@
     }
 
     return result;
+  }
+
+
+  function discoverInlineSections(text, preliminaryElements, rawElements, language, sourceUnits = []) {
+    if (language !== "en") return [];
+
+    const fullText = String(text || "");
+    const existingSectionPositions = new Set((rawElements || [])
+      .filter(element => element.type === "SEC")
+      .map(element => Math.max(0, Number(element.position || 0))));
+    const inlineSections = [];
+
+    for (const article of preliminaryElements || []) {
+      if (article.type !== "ART" || article.isAmendment) continue;
+      if (!/^ART-/.test(article.canonicalId || "")) continue;
+
+      const articleEnd = Number(article.endPosition || fullText.length);
+      const containedSections = (preliminaryElements || []).filter(candidate =>
+        candidate.type === "SEC" &&
+        Number(candidate.position || 0) > Number(article.position || 0) &&
+        Number(candidate.position || 0) < articleEnd
+      );
+
+      const regions = [];
+      const articleHeadingLength = article.heading ? article.heading.length : 0;
+      regions.push({ content: article.content || "", start: Number(article.position || 0) + articleHeadingLength, lineIndex: article.lineIndex });
+
+      for (const section of containedSections) {
+        const sectionHeadingLength = section.heading ? section.heading.length : 0;
+        regions.push({ content: section.content || "", start: Number(section.position || 0) + sectionHeadingLength, lineIndex: section.lineIndex });
+      }
+
+      for (const region of regions) {
+        const regex = /\bSection\s+(\d+[A-Za-z]?)\s*\./gi;
+        let match;
+
+        while ((match = regex.exec(region.content)) !== null) {
+          const estimatedPosition = region.start + match.index;
+          const absolutePosition = resolveOriginalPosition(fullText, match[0], estimatedPosition);
+          if (hasNearbyPosition(existingSectionPositions, absolutePosition, 8)) continue;
+          if (looksLikeNoteReference(region.content, match.index)) continue;
+
+          const identifier = String(match[1] || "").trim();
+          const normalizedId = CORE.normalizeNumber(identifier, language);
+          const canonicalId = `${article.canonicalId}-SEC-${normalizedId}`;
+          const sourceUnit = CORE.findSourceUnitForHeading(match[0], sourceUnits);
+
+          inlineSections.push({
+            id: canonicalId,
+            canonicalId,
+            type: "SEC",
+            prefix: "SEC",
+            level: article.level + 1,
+            identifier,
+            normalizedId,
+            sortKey: `${article.sortKey || article.canonicalId}-SEC-${normalizedId}`,
+            position: absolutePosition,
+            endPosition: null,
+            lineIndex: region.lineIndex,
+            heading: match[0],
+            content: "",
+            isAnnex: false,
+            isAmendment: false,
+            isEmpty: true,
+            parentId: article.canonicalId,
+            parentRole: "article",
+            detectedBy: "inline-section-boundary",
+            source: CORE.sourceAnchorFromUnit(sourceUnit)
+          });
+        }
+      }
+    }
+
+    return inlineSections;
+  }
+
+  function resolveOriginalPosition(fullText, needle, estimatedPosition) {
+    const text = String(fullText || "");
+    const target = String(needle || "").trim();
+    const estimate = Math.max(0, Number(estimatedPosition || 0));
+    if (!target) return estimate;
+
+    const windowStart = Math.max(0, estimate - 80);
+    const windowEnd = Math.min(text.length, estimate + target.length + 120);
+    const localIndex = text.slice(windowStart, windowEnd).indexOf(target);
+    if (localIndex >= 0) return windowStart + localIndex;
+
+    const globalIndex = text.indexOf(target, Math.max(0, estimate - 200));
+    return globalIndex >= 0 ? globalIndex : estimate;
+  }
+
+  function hasNearbyPosition(positions, target, radius) {
+    for (const position of positions) {
+      if (Math.abs(position - target) <= radius) return true;
+    }
+    return false;
+  }
+
+  function looksLikeNoteReference(content, matchIndex) {
+    const before = String(content || "").slice(Math.max(0, matchIndex - 48), matchIndex).toLowerCase();
+    return /\(\s*note:\s*changed\s+by\s*$/.test(before);
+  }
+
+  function assignScopedParents(elements) {
+    let currentArticle = null;
+
+    return (elements || []).map(element => {
+      if (element.type === "ART") {
+        currentArticle = element;
+        return element;
+      }
+
+      if (currentArticle && element.type === "SEC") {
+        const scopedId = `${currentArticle.canonicalId}-SEC-${element.normalizedId || CORE.normalizeNumber(element.identifier, "en")}`;
+        return {
+          ...element,
+          id: scopedId,
+          canonicalId: scopedId,
+          sortKey: `${currentArticle.sortKey || currentArticle.canonicalId}-SEC-${element.normalizedId || "0000"}`,
+          parentId: currentArticle.canonicalId,
+          parentRole: "article"
+        };
+      }
+
+      return element;
+    });
   }
 
   function detectPreamble(text, structureElements, language) {
@@ -450,6 +591,7 @@
     parse,
     summarize,
     discoverStructure,
+    discoverInlineSections,
     detectPreamble,
     extractMetadata,
     detectAmendments
