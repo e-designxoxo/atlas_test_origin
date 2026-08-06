@@ -1138,6 +1138,22 @@
         text-decoration: none;
       }
 
+      .fiche-header .fh-amended .amendment-chip {
+        display: inline-flex;
+        align-items: center;
+        margin: 4px 6px 0 0;
+        border-radius: 999px;
+        background: rgba(68,127,128,0.08);
+        color: var(--teal);
+        padding: 4px 8px;
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+
+      .fiche-header .fh-amended .amendment-more {
+        color: var(--muted);
+      }
+
       /* Sections */
       .fiche-section {
         margin-bottom: 32px;
@@ -1181,30 +1197,55 @@
       }
 
       /* Provisions */
+      .provision-list {
+        display: grid;
+        gap: 8px;
+      }
+
       .provision-item {
         border-radius: 8px;
         overflow: hidden;
         border: 1px solid var(--border);
-        margin-bottom: 8px;
+        background: var(--card);
+      }
+
+      .provision-item.level-1 {
+        margin-top: 10px;
+        border-color: rgba(68,127,128,0.32);
+      }
+
+      .provision-item.level-3,
+      .provision-item.level-4,
+      .provision-item.level-5 {
+        margin-left: 22px;
+      }
+
+      .provision-item.is-amendment {
+        border-color: rgba(196,147,90,0.38);
       }
 
       .provision-item button.provision-toggle {
         width: 100%;
-        display: flex;
+        display: grid;
+        grid-template-columns: minmax(58px, auto) 1fr auto;
         align-items: center;
-        gap: 12px;
+        gap: 14px;
         padding: 16px;
         text-align: left;
         background: var(--card);
-        transition: background 0.15s;
+        transition: background 0.15s, border-color 0.15s;
+      }
+
+      .provision-item.level-1 button.provision-toggle {
+        background: rgba(68,127,128,0.045);
       }
 
       .provision-item button.provision-toggle:hover {
-        background: rgba(0,0,0,0.02);
+        background: rgba(0,0,0,0.025);
       }
 
       .provision-item button.provision-toggle.expanded {
-        background: var(--teal-fade);
+        background: rgba(68,127,128,0.10);
       }
 
       .provision-item .prov-art {
@@ -1213,15 +1254,31 @@
         color: var(--teal);
         font-family: var(--mono);
         flex-shrink: 0;
-        min-width: 52px;
+        white-space: nowrap;
+      }
+
+      .provision-item.level-1 .prov-art {
+        color: var(--slate);
+      }
+
+      .provision-item.is-amendment .prov-art {
+        color: var(--amber);
       }
 
       .provision-item .prov-title {
+        min-width: 0;
         flex: 1;
         font-size: 13px;
         font-weight: 500;
         color: var(--ink);
         font-family: var(--sans);
+        overflow-wrap: anywhere;
+      }
+
+      .provision-item.level-1 .prov-title {
+        font-family: var(--serif);
+        font-size: 15px;
+        font-weight: 700;
       }
 
       .provision-item .prov-chevron {
@@ -1235,15 +1292,35 @@
       }
 
       .provision-item .prov-detail {
-        padding: 0 16px 16px;
-        background: var(--teal-fade);
+        padding: 0 16px 18px;
+        background: rgba(68,127,128,0.06);
+        border-top: 1px solid rgba(68,127,128,0.08);
+      }
+
+      .provision-item .prov-detail-inner {
+        max-width: 74ch;
+        padding-top: 14px;
       }
 
       .provision-item .prov-detail p {
-        font-size: 13px;
-        line-height: 1.6;
+        margin: 0 0 12px;
+        font-size: 14px;
+        line-height: 1.75;
         color: var(--ink);
         font-family: var(--sans);
+      }
+
+      .provision-item .prov-detail p:last-child {
+        margin-bottom: 0;
+      }
+
+      .provision-item .prov-section-marker {
+        display: inline-flex;
+        margin-right: 8px;
+        color: var(--teal);
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 700;
       }
 
       /* Concepts */
@@ -1881,7 +1958,7 @@
         <div class="sidebar-user">
           <div class="avatar">JD</div>
           <div class="user-info">
-            <p class="user-name">John Jane Doe</p>
+            <p class="user-name">Jean Dupont</p>
             <p class="user-role">Senior Counsel</p>
           </div>
         </div>
@@ -2224,8 +2301,8 @@
         // Provision toggle buttons
         document.querySelectorAll('.provision-toggle').forEach(btn => {
           btn.onclick = function() {
-            const art = this.dataset.art;
-            state.expandedProvision = state.expandedProvision === art ? null : art;
+            const key = this.dataset.key;
+            state.expandedProvision = state.expandedProvision === key ? null : key;
             renderContent();
           };
         });
@@ -2438,6 +2515,76 @@
         `;
       }
 
+      function renderAmendmentSummary(f) {
+        const amendments = Array.isArray(f.amendedBy) ? f.amendedBy.filter(Boolean) : [];
+        if (amendments.length === 0) return '';
+
+        const label = f.type === 'constitution' ? 'Amendment signals' : 'Amended by';
+        const visible = amendments.slice(0, 8);
+        const remaining = amendments.length - visible.length;
+
+        return `
+          <div class="fh-amended">
+            <span>${label}</span>
+            ${visible.map(a => `<span class="amendment-chip">${escapeHTML(a)}</span>`).join('')}
+            ${remaining > 0 ? `<span class="amendment-chip amendment-more">+${remaining} more</span>` : ''}
+          </div>
+        `;
+      }
+
+      function renderProvisionItem(p) {
+        const key = p.key || p.id || p.art;
+        const expanded = state.expandedProvision === key;
+        const levelClass = `level-${Math.max(0, Math.min(Number(p.level || 0), 5))}`;
+        const amendmentClass = p.isAmendment ? ' is-amendment' : '';
+
+        return `
+          <div class="provision-item ${levelClass}${amendmentClass}">
+            <button class="provision-toggle ${expanded ? 'expanded' : ''}" data-key="${escapeHTML(key)}">
+              <span class="prov-art">${escapeHTML(p.art)}</span>
+              <span class="prov-title">${escapeHTML(p.title)}</span>
+              <svg class="prov-chevron ${expanded ? 'open' : ''}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            ${expanded ? `<div class="prov-detail"><div class="prov-detail-inner">${renderProvisionDetail(p.detail)}</div></div>` : ''}
+          </div>
+        `;
+      }
+
+      function renderProvisionDetail(detail) {
+        const paragraphs = splitProvisionParagraphs(detail);
+        if (paragraphs.length === 0) return '<p>No extracted text for this provision.</p>';
+
+        return paragraphs.map(paragraph => {
+          const match = paragraph.match(/^(Section\s+\d+[A-Za-z]?\.)\s*(.*)$/i);
+          if (match) {
+            return `<p><span class="prov-section-marker">${escapeHTML(match[1])}</span>${escapeHTML(match[2])}</p>`;
+          }
+          return `<p>${escapeHTML(paragraph)}</p>`;
+        }).join('');
+      }
+
+      function splitProvisionParagraphs(detail) {
+        const normalized = String(detail || '')
+          .replace(/\s+/g, ' ')
+          .replace(/\b(Section\s+\d+[A-Za-z]?\.)\s+/gi, '\n$1 ')
+          .replace(/\b(Note:\s*changed by[^.)]+\.)\s*/gi, '\n$1\n')
+          .trim();
+
+        return normalized
+          .split(/\n+/)
+          .map(part => part.trim())
+          .filter(Boolean);
+      }
+
+      function escapeHTML(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
       function renderFiche() {
         const f = state.currentFiche || MIFID_FICHE;
         return `
@@ -2462,12 +2609,7 @@
                   return `<div class="fh-meta-item"><span>${label}</span><p>${vals[i]}</p></div>`;
                 }).join('')}
               </div>
-              ${f.amendedBy.length > 0 ? `
-                <div class="fh-amended">
-                  <span>Amended by</span>
-                  ${f.amendedBy.map(a => `<a href="#">${a}</a>`).join('')}
-                </div>
-              ` : ''}
+              ${renderAmendmentSummary(f)}
             </div>
 
             <!-- Summary -->
@@ -2479,16 +2621,9 @@
             <!-- Key Provisions -->
             <div class="fiche-section">
               <div class="section-divider"><div class="line"></div><span>Key Provisions</span><div class="line"></div></div>
-              ${f.provisions.map(p => `
-                <div class="provision-item">
-                  <button class="provision-toggle ${state.expandedProvision === p.art ? 'expanded' : ''}" data-art="${p.art}">
-                    <span class="prov-art">${p.art}</span>
-                    <span class="prov-title">${p.title}</span>
-                    <svg class="prov-chevron ${state.expandedProvision === p.art ? 'open' : ''}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                  </button>
-                  ${state.expandedProvision === p.art ? `<div class="prov-detail"><p>${p.detail}</p></div>` : ''}
-                </div>
-              `).join('')}
+              <div class="provision-list">
+                ${f.provisions.map(p => renderProvisionItem(p)).join('')}
+              </div>
             </div>
 
             <!-- Concepts -->
@@ -2924,7 +3059,12 @@
         const doc = fiche.document || {};
         const metadata = doc.metadata || {};
         const identity = doc.identity || result.identity || {};
-        const provisions = (fiche.provisions || []).slice(0, 12).map((provision, index) => ({
+        const provisions = (fiche.provisions || []).slice(0, 120).map((provision, index) => ({
+          id: provision.id || provision.canonicalId || `provision-${index + 1}`,
+          key: provision.id || provision.canonicalId || `${provision.type || 'NODE'}-${provision.identifier || index + 1}-${index}`,
+          type: provision.type || 'NODE',
+          level: Number.isFinite(provision.level) ? provision.level : 0,
+          isAmendment: Boolean(provision.isAmendment),
           art: provision.identifier ? `${provision.type} ${provision.identifier}` : provision.type || `Node ${index + 1}`,
           title: provision.heading || provision.citation || `Provision ${index + 1}`,
           detail: provision.content || provision.preview || ''
