@@ -864,6 +864,15 @@
         line-height: 1.6;
       }
 
+      .atlas-kicker {
+        margin-bottom: 6px;
+        color: var(--teal);
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
       .review-summary {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1024,6 +1033,79 @@
         font-size: 12px;
         line-height: 1.55;
         padding: 12px;
+      }
+
+      .save-dialog {
+        width: min(520px, calc(100vw - 32px));
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--card);
+        color: var(--ink);
+        padding: 0;
+        box-shadow: 0 24px 70px rgba(16, 52, 66, 0.24);
+      }
+
+      .save-dialog::backdrop {
+        background: rgba(16, 25, 35, 0.56);
+      }
+
+      .save-dialog-content {
+        padding: 24px;
+      }
+
+      .save-dialog h2 {
+        margin: 0 0 8px;
+        font-family: var(--serif);
+        font-size: 26px;
+      }
+
+      .save-dialog p {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .save-dialog-document {
+        margin-top: 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: rgba(255,255,255,0.58);
+        padding: 12px;
+      }
+
+      .save-dialog-document strong,
+      .save-dialog-document span {
+        display: block;
+      }
+
+      .save-dialog-document span {
+        margin-top: 4px;
+        color: var(--dimmer);
+        font-family: var(--mono);
+        font-size: 10px;
+      }
+
+      .save-dialog-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 20px;
+      }
+
+      .save-dialog-actions button {
+        min-height: 40px;
+        border-radius: 6px;
+        padding: 9px 13px;
+        background: var(--teal);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .save-dialog-actions button.secondary {
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--muted);
       }
 
       @media (max-width: 768px) {
@@ -1958,7 +2040,7 @@
         <div class="sidebar-user">
           <div class="avatar">JD</div>
           <div class="user-info">
-            <p class="user-name">John Jane Doe</p>
+            <p class="user-name">Jean Dupont</p>
             <p class="user-role">Senior Counsel</p>
           </div>
         </div>
@@ -2035,6 +2117,23 @@
     <!-- Hidden file input -->
     <input type="file" accept=".txt,.html,.htm,.pdf,.docx" class="hidden-input" id="hiddenFileInput" onchange="handleFileSelect(event)">
 
+    <dialog class="save-dialog" id="saveWorkspaceDialog" aria-labelledby="saveWorkspaceTitle">
+      <div class="save-dialog-content">
+        <p class="atlas-kicker">Library Save</p>
+        <h2 id="saveWorkspaceTitle">Save this document?</h2>
+        <p>The fiche is ready. Saving keeps it in this browser's ATLAS Library and sidebar after refresh.</p>
+        <div class="save-dialog-document">
+          <strong id="saveWorkspaceName">Imported legal document</strong>
+          <span id="saveWorkspaceReference">No reference</span>
+        </div>
+        <div class="save-dialog-actions">
+          <button type="button" onclick="savePendingWorkspace()">Save to Library</button>
+          <button class="secondary" type="button" onclick="openPendingWorkspaceWithoutSaving()">Open without saving</button>
+          <button class="secondary" type="button" onclick="closeSaveWorkspaceDialog()">Cancel</button>
+        </div>
+      </div>
+    </dialog>
+
     <script src="data/pipeline/schema.js?v=20260803-4"></script>
     <script src="data/pipeline/identifier.js?v=20260803-4"></script>
     <script src="data/pipeline/validators.js?v=20260803-4"></script>
@@ -2075,6 +2174,94 @@
         { id: 'gdpr83',   title: 'GDPR Art. 83',          short: 'Administrative Fines',type: 'regulation',  field: 'Data Protection',  date: '25 May 2018',         connections: 24, alerts: 2, status: 'In Force' },
         { id: 'rome1',    title: 'Rome I Regulation',     short: 'Contractual Oblig.',  type: 'regulation',  field: 'Civil Law',        date: '17 Jun 2008',         connections: 19, alerts: 0, status: 'In Force' },
       ];
+
+      const IMPORTED_WORKSPACES_STORAGE_KEY = 'atlas.importedWorkspaces.v1';
+
+      function readImportedWorkspaces() {
+        try {
+          const raw = localStorage.getItem(IMPORTED_WORKSPACES_STORAGE_KEY);
+          const parsed = raw ? JSON.parse(raw) : [];
+          return Array.isArray(parsed) ? parsed.filter(item => item && item.id && item.fiche) : [];
+        } catch (error) {
+          console.warn('ATLAS could not read imported workspaces.', error);
+          return [];
+        }
+      }
+
+      function writeImportedWorkspaces(workspaces) {
+        try {
+          localStorage.setItem(IMPORTED_WORKSPACES_STORAGE_KEY, JSON.stringify(workspaces));
+          return true;
+        } catch (error) {
+          console.warn('ATLAS could not save imported workspaces.', error);
+          return false;
+        }
+      }
+
+      function getLibraryDocs() {
+        const importedDocs = readImportedWorkspaces().map(({ fiche, savedAt, sourceFilename, ...doc }) => ({
+          ...doc,
+          imported: true
+        }));
+        return [...LIBRARY_DOCS, ...importedDocs];
+      }
+
+      function getStoredWorkspace(docId) {
+        return readImportedWorkspaces().find(item => item.id === docId) || null;
+      }
+
+      function rememberImportedWorkspace(fiche, result) {
+        const identity = result && result.identity ? result.identity : {};
+        const sourceFilename = identity.sourceFilename || (result && result.extraction && result.extraction.filename) || '';
+        const identityBasis = [
+          fiche.ref,
+          fiche.fullTitle,
+          fiche.jurisdiction,
+          fiche.dateAdopted,
+          sourceFilename
+        ].filter(Boolean).join('|');
+        const id = `imported-${slugForId(fiche.ref || fiche.short || fiche.fullTitle || 'document')}-${shortHash(identityBasis)}`;
+        const doc = {
+          id,
+          title: fiche.fullTitle,
+          short: fiche.short || fiche.fullTitle,
+          type: fiche.type || 'unknown',
+          field: fiche.field || 'Legal source',
+          date: fiche.dateAdopted || 'Unknown',
+          connections: Array.isArray(fiche.connections) ? fiche.connections.length : 0,
+          alerts: Array.isArray(fiche.alerts) ? fiche.alerts.length : 0,
+          status: fiche.status || 'Parsed',
+          sourceFilename,
+          savedAt: new Date().toISOString(),
+          fiche
+        };
+        const existing = readImportedWorkspaces();
+        const next = [doc, ...existing.filter(item => item.id !== id)];
+        if (!writeImportedWorkspaces(next)) {
+          throw new Error('ATLAS could not save this fiche in browser storage. The document remains open but was not added to the Library.');
+        }
+        return doc;
+      }
+
+      function slugForId(value) {
+        return String(value || 'document')
+          .toLowerCase()
+          .normalize('NFKD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 48) || 'document';
+      }
+
+      function shortHash(value) {
+        let hash = 2166136261;
+        const input = String(value || 'atlas');
+        for (let index = 0; index < input.length; index += 1) {
+          hash ^= input.charCodeAt(index);
+          hash = Math.imul(hash, 16777619);
+        }
+        return (hash >>> 0).toString(36).slice(0, 8);
+      }
 
       const MIFID_FICHE = {
         docType: 'European Directive',
@@ -2185,6 +2372,7 @@
         selectedReviewType: null,
         pendingMetadataReview: null,
         metadataDraft: null,
+        pendingLibrarySave: null,
       };
 
       // ═══════════════════════════════════════════
@@ -2203,12 +2391,13 @@
       function renderSidebarDocs() {
         const container = document.getElementById('sidebarDocList');
         if (!container) return;
-        container.innerHTML = LIBRARY_DOCS.map(doc => `
+        container.innerHTML = getLibraryDocs().map(doc => `
           <button class="sidebar-doc ${state.activeDoc && state.activeDoc.id === doc.id ? 'active' : ''}"
+            data-doc-id="${escapeHTML(doc.id)}"
             onclick="openDocument('${doc.id}')">
-            <span class="doc-name">${doc.short}</span>
+            <span class="doc-name">${escapeHTML(doc.short)}</span>
             <span class="doc-meta">
-              <span>${doc.type}</span>
+              <span>${escapeHTML(doc.type)}</span>
               ${doc.alerts > 0 ? `<span class="doc-alerts">· ${doc.alerts} alerts</span>` : ''}
             </span>
           </button>
@@ -2507,7 +2696,7 @@
               </div>
 
               <div class="review-actions">
-                <button type="button" onclick="confirmMetadataReview()">Confirm identity and open fiche</button>
+                <button type="button" onclick="confirmMetadataReview()">Confirm identity</button>
                 <button class="secondary" type="button" onclick="setStage('upload')">Return to upload</button>
               </div>
             </div>
@@ -2706,17 +2895,17 @@
         return `
           <div class="library-view">
             <h2>Document Library</h2>
-            ${LIBRARY_DOCS.map(doc => `
+            ${getLibraryDocs().map(doc => `
               <button class="library-doc-card" onclick="openDocument('${doc.id}')">
-                <div class="ldc-icon" style="background:${TYPE_COLORS[doc.type]}18">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${TYPE_COLORS[doc.type]}" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <div class="ldc-icon" style="background:${TYPE_COLORS[doc.type] || TYPE_COLORS.unknown}18">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${TYPE_COLORS[doc.type] || TYPE_COLORS.unknown}" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 </div>
                 <div class="ldc-info">
                   <div class="ldc-title-row">
-                    <span class="ldc-title">${doc.title}</span>
+                    <span class="ldc-title">${escapeHTML(doc.title)}</span>
                     ${typeBadgeHTML(doc.type)}
                   </div>
-                  <p class="ldc-meta">${doc.field} · ${doc.date}</p>
+                  <p class="ldc-meta">${escapeHTML(doc.field)} · ${escapeHTML(doc.date)}${doc.imported ? ' · Saved locally' : ''}</p>
                 </div>
                 <div class="ldc-connections">
                   <p class="ldc-conn-num">${doc.connections}</p>
@@ -2945,15 +3134,6 @@
         return `<span class="sev-badge" style="background:${bg}; color:${color};">${icons[map[sev].icon]} ${sev}</span>`;
       }
 
-      function escapeHTML(value) {
-        return String(value || '')
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#39;');
-      }
-
       function labelForDocumentType(type) {
         const match = DOCUMENT_TYPE_CHOICES.find(choice => choice.type === type);
         return match ? match.label : 'Generic';
@@ -3028,14 +3208,54 @@
       function confirmMetadataReview() {
         if (!state.currentFiche) return;
         const finalizedFiche = applyMetadataDraftToFiche(state.currentFiche, state.metadataDraft);
-        finalizeImportedFiche(finalizedFiche, state.currentPipelineResult);
+        state.pendingLibrarySave = {
+          fiche: finalizedFiche,
+          result: state.currentPipelineResult
+        };
+
+        const dialog = document.getElementById('saveWorkspaceDialog');
+        document.getElementById('saveWorkspaceName').textContent = finalizedFiche.fullTitle || finalizedFiche.short || 'Imported legal document';
+        document.getElementById('saveWorkspaceReference').textContent = finalizedFiche.ref || 'No reference';
+        if (dialog && typeof dialog.showModal === 'function') dialog.showModal();
+        else savePendingWorkspace();
       }
 
-      function finalizeImportedFiche(fiche, result) {
+      function savePendingWorkspace() {
+        const pending = state.pendingLibrarySave;
+        if (!pending) return;
+
+        try {
+          finalizeImportedFiche(pending.fiche, pending.result, { persist: true });
+          closeSaveWorkspaceDialog();
+        } catch (error) {
+          closeSaveWorkspaceDialog();
+          state.error = {
+            title: 'Library save failed',
+            message: error.message,
+            detail: 'The fiche was generated, but browser storage did not accept it.'
+          };
+          state.stage = 'error';
+          render();
+        }
+      }
+
+      function openPendingWorkspaceWithoutSaving() {
+        const pending = state.pendingLibrarySave;
+        if (!pending) return;
+        finalizeImportedFiche(pending.fiche, pending.result, { persist: false });
+        closeSaveWorkspaceDialog();
+      }
+
+      function closeSaveWorkspaceDialog() {
+        const dialog = document.getElementById('saveWorkspaceDialog');
+        if (dialog && dialog.open) dialog.close();
+      }
+
+      function finalizeImportedFiche(fiche, result, options = {}) {
         state.currentFiche = fiche;
         state.currentPipelineResult = result || state.currentPipelineResult;
-        state.activeDoc = {
-          id: (result && result.fiche && result.fiche.document && result.fiche.document.id) || 'uploaded-document',
+        const transientDoc = {
+          id: (result && result.fiche && result.fiche.document && result.fiche.document.id) || `temporary-${shortHash(fiche.ref || fiche.fullTitle)}`,
           title: fiche.fullTitle,
           short: fiche.short,
           type: fiche.type,
@@ -3045,8 +3265,12 @@
           alerts: fiche.alerts.length,
           status: fiche.status
         };
+        state.activeDoc = options.persist
+          ? rememberImportedWorkspace(fiche, state.currentPipelineResult)
+          : transientDoc;
         state.pendingMetadataReview = null;
         state.metadataDraft = null;
+        state.pendingLibrarySave = null;
         state.progress = 100;
         state.phase = PROC_STEPS.length - 1;
         state.statusMessage = 'Fiche generated';
@@ -3150,7 +3374,7 @@
           state.metadataDraft = null;
         }
         if (stage === 'fiche' && !state.activeDoc) {
-          state.activeDoc = LIBRARY_DOCS[0];
+          state.activeDoc = getLibraryDocs()[0];
           renderSidebarDocs();
         }
         render();
@@ -3166,8 +3390,23 @@
       }
 
       function openDocument(docId) {
+        const stored = getStoredWorkspace(docId);
+        if (stored) {
+          const { fiche, savedAt, sourceFilename, ...doc } = stored;
+          state.currentFiche = fiche;
+          state.currentPipelineResult = null;
+          state.activeDoc = { ...doc, imported: true };
+          state.activeNav = 'workspace';
+          state.stage = 'fiche';
+          state.expandedProvision = null;
+          render();
+          return;
+        }
+
         const doc = LIBRARY_DOCS.find(d => d.id === docId);
         if (!doc) return;
+        state.currentFiche = null;
+        state.currentPipelineResult = null;
         state.activeDoc = doc;
         state.activeNav = 'workspace';
         state.stage = 'fiche';
@@ -3412,7 +3651,7 @@
             // Rebind sidebar doc clicks inside mobile
             container.querySelectorAll('.sidebar-doc').forEach(btn => {
               btn.onclick = function() {
-                const docId = LIBRARY_DOCS.find(d => d.short === this.querySelector('.doc-name').textContent.trim())?.id;
+                const docId = this.dataset.docId;
                 if (docId) {
                   openDocument(docId);
                   closeMobileSidebar();
