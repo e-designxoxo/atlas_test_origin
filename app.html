@@ -197,9 +197,9 @@
       }
 
       .sidebar-doc {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 2px 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
         padding: 8px 12px;
         border-radius: 8px;
         width: 100%;
@@ -213,14 +213,6 @@
 
       .sidebar-doc.active {
         background: var(--navy-hi);
-      }
-
-      .sidebar-doc-main {
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        text-align: left;
       }
 
       .sidebar-doc .doc-name {
@@ -248,29 +240,6 @@
         color: var(--amber);
         font-family: var(--mono);
         font-size: 9px;
-      }
-
-      .sidebar-doc-delete {
-        width: 22px;
-        height: 22px;
-        border-radius: 6px;
-        display: grid;
-        place-items: center;
-        align-self: center;
-        color: var(--glacier);
-        opacity: 0;
-        transition: all 0.15s;
-      }
-
-      .sidebar-doc:hover .sidebar-doc-delete,
-      .sidebar-doc:focus-within .sidebar-doc-delete {
-        opacity: 0.72;
-      }
-
-      .sidebar-doc-delete:hover {
-        background: rgba(200,75,75,0.16);
-        color: #fff;
-        opacity: 1;
       }
 
       .sidebar-user {
@@ -1185,6 +1154,10 @@
         flex-shrink: 0;
       }
 
+      .fiche-action-menu-wrap {
+        position: relative;
+      }
+
       .fiche-header .fh-actions button {
         padding: 6px;
         border-radius: 4px;
@@ -1194,6 +1167,35 @@
 
       .fiche-header .fh-actions button:hover {
         background: rgba(0,0,0,0.04);
+      }
+
+      .fiche-action-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        width: 176px;
+        z-index: 10;
+        padding: 6px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--card);
+        box-shadow: 0 14px 34px rgba(16, 25, 35, 0.14);
+      }
+
+      .fiche-action-menu button {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        text-align: left;
+        color: var(--ink);
+        font-size: 12px;
+      }
+
+      .fiche-action-menu button.danger {
+        color: var(--red);
       }
 
       .fiche-header h1 {
@@ -1985,22 +1987,6 @@
         flex-shrink: 0;
       }
 
-      .library-doc-delete {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        display: grid;
-        place-items: center;
-        color: var(--dimmer);
-        flex-shrink: 0;
-        transition: all 0.15s;
-      }
-
-      .library-doc-delete:hover {
-        background: rgba(200,75,75,0.10);
-        color: var(--red);
-      }
-
       /* ═══════════ ALERTS VIEW ═══════════ */
       .alerts-view {
         max-width: 720px;
@@ -2463,6 +2449,7 @@
         pendingMetadataReview: null,
         metadataDraft: null,
         pendingLibrarySave: null,
+        ficheActionMenuOpen: false,
       };
 
       // ═══════════════════════════════════════════
@@ -2482,21 +2469,15 @@
         const container = document.getElementById('sidebarDocList');
         if (!container) return;
         container.innerHTML = getLibraryDocs().map(doc => `
-          <div class="sidebar-doc ${state.activeDoc && state.activeDoc.id === doc.id ? 'active' : ''}"
-            data-doc-id="${escapeHTML(doc.id)}">
-            <button class="sidebar-doc-main" type="button" onclick="openDocument('${escapeJSString(doc.id)}')">
-              <span class="doc-name">${escapeHTML(doc.short)}</span>
-              <span class="doc-meta">
-                <span>${escapeHTML(doc.type)}</span>
-                ${doc.alerts > 0 ? `<span class="doc-alerts">· ${doc.alerts} alerts</span>` : ''}
-              </span>
-            </button>
-            ${doc.imported ? `
-              <button class="sidebar-doc-delete" type="button" title="Remove from Library" aria-label="Remove ${escapeHTML(doc.short)} from Library" onclick="deleteImportedDocument('${escapeJSString(doc.id)}', event)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>
-              </button>
-            ` : ''}
-          </div>
+          <button class="sidebar-doc ${state.activeDoc && state.activeDoc.id === doc.id ? 'active' : ''}"
+            data-doc-id="${escapeHTML(doc.id)}"
+            onclick="openDocument('${escapeJSString(doc.id)}')">
+            <span class="doc-name">${escapeHTML(doc.short)}</span>
+            <span class="doc-meta">
+              <span>${escapeHTML(doc.type)}</span>
+              ${doc.alerts > 0 ? `<span class="doc-alerts">· ${doc.alerts} alerts</span>` : ''}
+            </span>
+          </button>
         `).join('');
       }
 
@@ -2929,6 +2910,8 @@
 
       function renderFiche() {
         const f = state.currentFiche || MIFID_FICHE;
+        const canEditIdentity = Boolean(state.currentFiche);
+        const canDeleteFromLibrary = Boolean(state.activeDoc && state.activeDoc.imported);
         return `
           <div class="fiche-container">
             <!-- Header -->
@@ -2941,7 +2924,28 @@
                 <div class="fh-actions">
                   <button title="Download"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
                   <button title="Share"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
-                  <button title="More"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                  <div class="fiche-action-menu-wrap">
+                    <button title="More" aria-haspopup="menu" aria-expanded="${state.ficheActionMenuOpen ? 'true' : 'false'}" onclick="toggleFicheActionMenu(event)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                    ${state.ficheActionMenuOpen ? `
+                      <div class="fiche-action-menu" role="menu">
+                        ${canEditIdentity ? `
+                          <button type="button" role="menuitem" onclick="editCurrentFicheIdentity(event)">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                            Edit identity
+                          </button>
+                        ` : ''}
+                        ${canDeleteFromLibrary ? `
+                          <button class="danger" type="button" role="menuitem" onclick="deleteCurrentImportedDocument(event)">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>
+                            Delete from Library
+                          </button>
+                        ` : ''}
+                        ${!canEditIdentity && !canDeleteFromLibrary ? `
+                          <button type="button" role="menuitem" onclick="toggleFicheActionMenu(event)">No document actions</button>
+                        ` : ''}
+                      </div>
+                    ` : ''}
+                  </div>
                 </div>
               </div>
               <h1>${f.fullTitle}</h1>
@@ -3049,7 +3053,7 @@
           <div class="library-view">
             <h2>Document Library</h2>
             ${getLibraryDocs().map(doc => `
-              <div class="library-doc-card" role="button" tabindex="0" onclick="openDocument('${escapeJSString(doc.id)}')" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openDocument('${escapeJSString(doc.id)}'); }">
+              <button class="library-doc-card" onclick="openDocument('${escapeJSString(doc.id)}')">
                 <div class="ldc-icon" style="background:${TYPE_COLORS[doc.type] || TYPE_COLORS.unknown}18">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${TYPE_COLORS[doc.type] || TYPE_COLORS.unknown}" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 </div>
@@ -3065,13 +3069,8 @@
                   <p class="ldc-conn-label">connections</p>
                 </div>
                 ${doc.alerts > 0 ? `<span class="ldc-alert-badge">${doc.alerts} alerts</span>` : ''}
-                ${doc.imported ? `
-                  <button class="library-doc-delete" type="button" title="Remove from Library" aria-label="Remove ${escapeHTML(doc.short || doc.title)} from Library" onclick="deleteImportedDocument('${escapeJSString(doc.id)}', event)">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>
-                  </button>
-                ` : ''}
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--dimmer)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-              </div>
+              </button>
             `).join('')}
           </div>
         `;
@@ -3368,7 +3367,8 @@
         const finalizedFiche = applyMetadataDraftToFiche(state.currentFiche, state.metadataDraft);
         state.pendingLibrarySave = {
           fiche: finalizedFiche,
-          result: state.currentPipelineResult
+          result: state.currentPipelineResult,
+          replaceDocId: state.pendingMetadataReview && state.pendingMetadataReview.replaceDocId
         };
 
         const dialog = document.getElementById('saveWorkspaceDialog');
@@ -3383,7 +3383,10 @@
         if (!pending) return;
 
         try {
-          finalizeImportedFiche(pending.fiche, pending.result, { persist: true });
+          finalizeImportedFiche(pending.fiche, pending.result, {
+            persist: true,
+            replaceDocId: pending.replaceDocId
+          });
           closeSaveWorkspaceDialog();
         } catch (error) {
           closeSaveWorkspaceDialog();
@@ -3423,12 +3426,19 @@
           alerts: fiche.alerts.length,
           status: fiche.status
         };
-        state.activeDoc = options.persist
-          ? rememberImportedWorkspace(fiche, state.currentPipelineResult)
-          : transientDoc;
+        if (options.persist) {
+          const savedDoc = rememberImportedWorkspace(fiche, state.currentPipelineResult);
+          if (options.replaceDocId && options.replaceDocId !== savedDoc.id) {
+            forgetImportedWorkspace(options.replaceDocId);
+          }
+          state.activeDoc = savedDoc;
+        } else {
+          state.activeDoc = transientDoc;
+        }
         state.pendingMetadataReview = null;
         state.metadataDraft = null;
         state.pendingLibrarySave = null;
+        state.ficheActionMenuOpen = false;
         state.progress = 100;
         state.phase = PROC_STEPS.length - 1;
         state.statusMessage = 'Fiche generated';
@@ -3517,6 +3527,7 @@
         state.selectedReviewType = null;
         state.pendingMetadataReview = null;
         state.metadataDraft = null;
+        state.ficheActionMenuOpen = false;
         render();
       }
 
@@ -3557,6 +3568,7 @@
           state.activeNav = 'workspace';
           state.stage = 'fiche';
           state.expandedProvision = null;
+          state.ficheActionMenuOpen = false;
           render();
           return;
         }
@@ -3569,7 +3581,39 @@
         state.activeNav = 'workspace';
         state.stage = 'fiche';
         state.expandedProvision = null;
+        state.ficheActionMenuOpen = false;
         render();
+      }
+
+      function toggleFicheActionMenu(event) {
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        state.ficheActionMenuOpen = !state.ficheActionMenuOpen;
+        renderContent();
+      }
+
+      function editCurrentFicheIdentity(event) {
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        if (!state.currentFiche) return;
+        state.pendingMetadataReview = {
+          result: state.currentPipelineResult,
+          fiche: state.currentFiche,
+          replaceDocId: state.activeDoc && state.activeDoc.imported ? state.activeDoc.id : null
+        };
+        state.metadataDraft = createMetadataDraft(state.currentFiche);
+        state.ficheActionMenuOpen = false;
+        state.stage = 'metadata-review';
+        render();
+      }
+
+      function deleteCurrentImportedDocument(event) {
+        if (!state.activeDoc || !state.activeDoc.imported) return;
+        deleteImportedDocument(state.activeDoc.id, event);
       }
 
       function deleteImportedDocument(docId, event) {
@@ -3603,6 +3647,7 @@
           state.currentPipelineResult = null;
           state.stage = 'upload';
           state.expandedProvision = null;
+          state.ficheActionMenuOpen = false;
         }
 
         render();
