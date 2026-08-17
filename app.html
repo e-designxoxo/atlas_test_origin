@@ -1035,6 +1035,49 @@
         padding: 12px;
       }
 
+      .confidence-grid,
+      .source-quality-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .confidence-card,
+      .source-quality-card {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: rgba(255,255,255,0.58);
+        padding: 10px;
+      }
+
+      .confidence-card span,
+      .source-quality-card span {
+        display: block;
+        color: var(--dimmer);
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .confidence-card strong,
+      .source-quality-card strong {
+        display: block;
+        margin-top: 5px;
+        color: var(--ink);
+        font-size: 13px;
+      }
+
+      .confidence-card small,
+      .source-quality-card small {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.4;
+      }
+
       .save-dialog {
         width: min(520px, calc(100vw - 32px));
         border: 1px solid var(--border);
@@ -1110,6 +1153,8 @@
 
       @media (max-width: 768px) {
         .metadata-form { grid-template-columns: 1fr; }
+        .confidence-grid,
+        .source-quality-grid { grid-template-columns: 1fr; }
       }
 
       /* ═══════════ FICHE ═══════════ */ 
@@ -1230,6 +1275,85 @@
         font-family: var(--sans);
       }
 
+      .fiche-header .fh-meta-item small {
+        display: block;
+        margin-top: 3px;
+        color: var(--dimmer);
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.02em;
+      }
+
+      .source-quality-strip {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+      }
+
+      .source-quality-pill {
+        border: 1px solid rgba(68,127,128,0.16);
+        border-radius: 8px;
+        background: rgba(68,127,128,0.06);
+        padding: 9px;
+      }
+
+      .source-quality-pill span {
+        display: block;
+        color: var(--dimmer);
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .source-quality-pill strong {
+        display: block;
+        margin-top: 4px;
+        color: var(--ink);
+        font-size: 12px;
+      }
+
+      .source-details {
+        margin-top: 14px;
+        border-top: 1px solid var(--border);
+        padding-top: 12px;
+      }
+
+      .source-details summary {
+        color: var(--teal);
+        cursor: pointer;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+
+      .source-details-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px 16px;
+        margin-top: 12px;
+      }
+
+      .source-detail-item span {
+        display: block;
+        color: var(--dimmer);
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .source-detail-item p {
+        margin-top: 3px;
+        color: var(--ink);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
       .fiche-header .fh-amended {
         margin-top: 12px;
         padding-top: 12px;
@@ -1267,6 +1391,11 @@
 
       .fiche-header .fh-amended .amendment-more {
         color: var(--muted);
+      }
+
+      @media (max-width: 768px) {
+        .source-quality-strip,
+        .source-details-grid { grid-template-columns: 1fr; }
       }
 
       /* Sections */
@@ -2740,6 +2869,9 @@
         const identity = (review.result && review.result.identity) || {};
         const detection = (review.result && review.result.detection) || {};
         const warnings = ((review.result && review.result.warnings) || []).slice(0, 3);
+        const confidence = fieldConfidenceCards(draft, review.result);
+        const sourceQuality = draft.sourceQuality || buildSourceQuality(review.result, review.fiche || state.currentFiche || {});
+        const sourceDetails = draft.sourceDetails || buildSourceDetails(review.result, review.fiche || state.currentFiche || {});
 
         return `
           <div class="review-container">
@@ -2754,21 +2886,48 @@
                 <div class="review-stat"><span>Identity</span><strong>${identity.confidence ? `${identity.confidence.identity || 0}% confidence` : 'Review required'}</strong></div>
               </div>
 
+              <div class="confidence-grid">
+                ${confidence.map(item => `
+                  <div class="confidence-card">
+                    <span>${escapeHTML(item.label)}</span>
+                    <strong>${escapeHTML(item.value)}</strong>
+                    <small>${escapeHTML(item.reason)}</small>
+                  </div>
+                `).join('')}
+              </div>
+
               <div class="metadata-form">
                 ${metadataInput('fullTitle', 'Canonical title', draft.fullTitle, true)}
                 ${metadataInput('short', 'Short title', draft.short)}
                 ${metadataInput('ref', 'Reference / Citation ID', draft.ref)}
                 ${metadataSelect('type', 'Document type', draft.type)}
                 ${metadataInput('jurisdiction', 'Jurisdiction', draft.jurisdiction)}
-                ${metadataInput('body', 'Authority / Body', draft.body)}
-                ${metadataInput('dateAdopted', 'Adopted / Issued', draft.dateAdopted)}
-                ${metadataInput('dateForce', 'In force / Effective', draft.dateForce)}
+                ${metadataInput('body', authorityLabelForType(draft.type), draft.body)}
+                ${metadataInput('promulgatingAuthority', 'Promulgating authority', draft.promulgatingAuthority)}
+                ${metadataInput('sourcePublisher', 'Source publisher', draft.sourcePublisher)}
+                ${metadataInput('dateAdopted', principalDateLabelForType(draft.type), draft.dateAdopted)}
+                ${metadataInput('dateApproved', 'Approved', draft.dateApproved)}
+                ${metadataInput('datePromulgated', 'Promulgated', draft.datePromulgated)}
+                ${metadataInput('datePublished', 'Published', draft.datePublished)}
+                ${metadataInput('dateForce', effectiveDateLabelForType(draft.type), draft.dateForce)}
+                ${metadataInput('lastAmended', 'Last amended', draft.lastAmended)}
                 ${metadataInput('status', 'Status', draft.status)}
                 ${metadataInput('field', 'Field', draft.field)}
               </div>
 
+              <div class="source-quality-grid">
+                ${sourceQualityCards(sourceQuality).map(item => `
+                  <div class="source-quality-card">
+                    <span>${escapeHTML(item.label)}</span>
+                    <strong>${escapeHTML(item.value)}</strong>
+                    <small>${escapeHTML(item.note)}</small>
+                  </div>
+                `).join('')}
+              </div>
+
               <div class="metadata-note">
                 Source filename: ${escapeHTML(identity.sourceFilename || (review.result && review.result.extraction && review.result.extraction.filename) || 'Imported source')}
+                ${sourceDetails.sourcePublisher ? `<br>Source publisher: ${escapeHTML(sourceDetails.sourcePublisher)}` : ''}
                 ${warnings.length ? `<br>Review warnings: ${warnings.map(warning => escapeHTML(warning.code || warning.message || String(warning))).join(', ')}` : '<br>No blocking identity warning was found.'}
               </div>
 
@@ -2908,10 +3067,211 @@
           .replace(/\r/g, '\\r');
       }
 
+      function firstKnownValue(...values) {
+        return values.find(value => {
+          const text = String(value ?? '').trim();
+          return Boolean(text && !/^(unknown|null|undefined)$/i.test(text));
+        }) || '';
+      }
+
+      function principalDateLabelForType(type) {
+        const labels = {
+          constitution: 'Adopted / approved',
+          judgment: 'Decided',
+          contract: 'Signed',
+          treaty: 'Signed',
+          regulation: 'Adopted',
+          directive: 'Adopted',
+          statute: 'Promulgated / enacted',
+          unknown: 'Principal date'
+        };
+        return labels[type] || labels.unknown;
+      }
+
+      function effectiveDateLabelForType(type) {
+        const labels = {
+          judgment: 'Final / enforceable',
+          contract: 'Effective',
+          treaty: 'Entered into force',
+          regulation: 'In force',
+          directive: 'Transposition / effect',
+          statute: 'In force',
+          constitution: 'In force',
+          unknown: 'Effective date'
+        };
+        return labels[type] || labels.unknown;
+      }
+
+      function authorityLabelForType(type) {
+        const labels = {
+          judgment: 'Court / chamber',
+          contract: 'Parties / drafter',
+          treaty: 'Parties / depositary',
+          regulation: 'Institution',
+          directive: 'Institution',
+          statute: 'Enacting authority',
+          constitution: 'Constituent authority',
+          unknown: 'Authority / body'
+        };
+        return labels[type] || labels.unknown;
+      }
+
+      function cleanCanonicalTitle(title) {
+        const text = String(title || '')
+          .replace(/\s+/g, ' ')
+          .replace(/\b([A-Z])\.\s+([A-Z])\.\s+/g, '$1.$2. ')
+          .replace(/\b([A-Za-zÀ-ÿ]{3,})\s+\1\b/gi, '$1')
+          .replace(/\b(Constitution)\s+\1\b/gi, '$1')
+          .trim();
+        return text || title || '';
+      }
+
+      function fieldConfidenceCards(draft, result) {
+        const detection = result && result.detection ? result.detection : {};
+        const identity = result && result.identity ? result.identity : {};
+        const fieldConfidence = draft.fieldConfidence || {};
+        const detectionConfidence = fieldConfidence.type ?? detection.confidence ?? identity.confidence?.detection ?? 0;
+        const identityConfidence = fieldConfidence.identity ?? identity.confidence?.identity ?? 0;
+        const authorityConfidence = fieldConfidence.body ?? (draft.body && !/^unknown$/i.test(draft.body) ? 70 : 35);
+
+        return [
+          {
+            label: 'Document type',
+            value: `${Math.max(0, Math.min(100, Number(detectionConfidence) || 0))}%`,
+            reason: detection.signals && detection.signals.length ? 'Matched detector signals' : 'From parser routing / review'
+          },
+          {
+            label: 'Canonical identity',
+            value: `${Math.max(0, Math.min(100, Number(identityConfidence) || 0))}%`,
+            reason: identity.warnings && identity.warnings.length ? 'Some identity fields need review' : 'Core identity fields present'
+          },
+          {
+            label: 'Authority',
+            value: `${Math.max(0, Math.min(100, Number(authorityConfidence) || 0))}%`,
+            reason: draft.body ? 'Authority field populated' : 'Authority not confidently separated yet'
+          }
+        ];
+      }
+
+      function buildSourceQuality(result, fiche = {}) {
+        const extraction = result && result.extraction ? result.extraction : {};
+        const warnings = result?.warnings || fiche.alerts || [];
+        const method = extraction.extractionMethod || fiche.sourceDetails?.extractionMethod || '';
+        const official = /official|eurlex|legifrance|admin\.ch|gazzetta|gov|parliament/i.test(
+          `${extraction.filename || ''} ${fiche.sourceDetails?.sourcePublisher || ''} ${method}`
+        );
+        const translation = /translation|translated|english version/i.test(`${fiche.fullTitle || ''} ${extraction.filename || ''}`);
+
+        return {
+          officialSource: official ? 'Likely official' : 'Imported source',
+          officialTranslation: translation ? 'Possible translation' : 'Not detected',
+          versionChecked: new Date().toISOString().slice(0, 10),
+          currentStatus: fiche.status || 'Needs review',
+          reviewState: warnings.length ? 'Needs review' : 'Partially verified'
+        };
+      }
+
+      function buildSourceDetails(result, fiche = {}) {
+        const extraction = result && result.extraction ? result.extraction : {};
+        const identity = result && result.identity ? result.identity : {};
+        const metadata = result && result.fiche && result.fiche.document ? result.fiche.document.metadata || {} : {};
+        return {
+          sourceFilename: identity.sourceFilename || extraction.filename || fiche.sourceFilename || fiche.sourceDetails?.sourceFilename || '',
+          sourcePublisher: fiche.sourcePublisher || metadata.sourcePublisher || metadata.publisher || fiche.sourceDetails?.sourcePublisher || '',
+          sourceAuthority: metadata.sourceAuthority || fiche.sourceDetails?.sourceAuthority || '',
+          gazetteReference: metadata.gazetteReference || metadata.ojReference || fiche.sourceDetails?.gazetteReference || '',
+          publicationLanguage: metadata.language || result?.detection?.language || fiche.sourceDetails?.publicationLanguage || '',
+          extractionMethod: extraction.extractionMethod || fiche.sourceDetails?.extractionMethod || '',
+          importedAt: fiche.sourceDetails?.importedAt || new Date().toISOString()
+        };
+      }
+
+      function sourceQualityCards(sourceQuality = {}) {
+        return [
+          { label: 'Official source', value: sourceQuality.officialSource || 'Imported source', note: 'Source authority, not legal validity.' },
+          { label: 'Translation', value: sourceQuality.officialTranslation || 'Not detected', note: 'Official translation requires human confirmation.' },
+          { label: 'Checked', value: sourceQuality.versionChecked || 'Not checked', note: 'Browser-side import date.' },
+          { label: 'Review state', value: sourceQuality.reviewState || 'Needs review', note: 'Machine status, not legal advice.' },
+          { label: 'Current status', value: sourceQuality.currentStatus || 'Unknown', note: 'Status should be verified against official sources.' }
+        ];
+      }
+
+      function renderFicheCoreMeta(f) {
+        const provenance = f.fieldProvenance || {};
+        const confidence = f.fieldConfidence || {};
+        const rows = [
+          { key: 'ref', label: 'Reference', value: f.ref },
+          { key: 'body', label: authorityLabelForType(f.type), value: f.body },
+          { key: 'dateAdopted', label: principalDateLabelForType(f.type), value: firstKnownValue(f.dateAdopted, f.dateApproved, f.datePromulgated, f.dateSigned) },
+          { key: 'dateForce', label: effectiveDateLabelForType(f.type), value: f.dateForce },
+          { key: 'jurisdiction', label: 'Jurisdiction', value: f.jurisdiction },
+          { key: 'field', label: 'Field', value: f.field }
+        ];
+
+        return `
+          <div class="fh-meta">
+            ${rows.map(row => `
+              <div class="fh-meta-item">
+                <span>${escapeHTML(row.label)}</span>
+                <p>${escapeHTML(row.value || 'Unknown')}</p>
+                ${provenance[row.key] || confidence[row.key] ? `<small>${escapeHTML(provenance[row.key] || 'parser')} ${confidence[row.key] ? `· ${confidence[row.key]}%` : ''}</small>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      function renderSourceQualityStrip(sourceQuality = {}) {
+        const cards = sourceQualityCards(sourceQuality).slice(0, 4);
+        return `
+          <div class="source-quality-strip">
+            ${cards.map(card => `
+              <div class="source-quality-pill">
+                <span>${escapeHTML(card.label)}</span>
+                <strong>${escapeHTML(card.value)}</strong>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      function renderSourceDetailsPanel(f) {
+        const details = f.sourceDetails || {};
+        const rows = [
+          ['Source filename', details.sourceFilename || f.sourceFilename],
+          ['Source publisher', f.sourcePublisher || details.sourcePublisher],
+          ['Promulgating authority', f.promulgatingAuthority],
+          ['Source authority', details.sourceAuthority],
+          ['Gazette / OJ reference', details.gazetteReference],
+          ['Publication language', details.publicationLanguage],
+          ['Published', f.datePublished],
+          ['Last amended', f.lastAmended],
+          ['Extraction method', details.extractionMethod],
+          ['Imported at', details.importedAt]
+        ].filter(([, value]) => firstKnownValue(value));
+
+        if (!rows.length) return '';
+
+        return `
+          <details class="source-details">
+            <summary>Source details</summary>
+            <div class="source-details-grid">
+              ${rows.map(([label, value]) => `
+                <div class="source-detail-item">
+                  <span>${escapeHTML(label)}</span>
+                  <p>${escapeHTML(value)}</p>
+                </div>
+              `).join('')}
+            </div>
+          </details>
+        `;
+      }
+
       function renderFiche() {
         const f = state.currentFiche || MIFID_FICHE;
         const canEditIdentity = Boolean(state.currentFiche);
         const canDeleteFromLibrary = Boolean(state.activeDoc && state.activeDoc.imported);
+        const sourceQuality = f.sourceQuality || buildSourceQuality(state.currentPipelineResult, f);
         return `
           <div class="fiche-container">
             <!-- Header -->
@@ -2949,13 +3309,10 @@
                 </div>
               </div>
               <h1>${f.fullTitle}</h1>
-              <div class="fh-meta">
-                ${['Reference', 'Body', 'Adopted', 'In Force', 'Jurisdiction', 'Field'].map((label, i) => {
-                  const vals = [f.ref, f.body, f.dateAdopted, f.dateForce, f.jurisdiction, f.field];
-                  return `<div class="fh-meta-item"><span>${label}</span><p>${vals[i]}</p></div>`;
-                }).join('')}
-              </div>
+              ${renderFicheCoreMeta(f)}
+              ${renderSourceQualityStrip(sourceQuality)}
               ${renderAmendmentSummary(f)}
+              ${renderSourceDetailsPanel(f)}
             </div>
 
             <!-- Summary -->
@@ -3322,14 +3679,24 @@
           docType: f.docType || labelForDocumentType(f.type || 'unknown'),
           type: f.type || 'unknown',
           ref: f.ref || '',
-          fullTitle: f.fullTitle || '',
+          fullTitle: cleanCanonicalTitle(f.fullTitle || ''),
           short: f.short || '',
           jurisdiction: f.jurisdiction || '',
           body: f.body || '',
+          promulgatingAuthority: f.promulgatingAuthority || '',
+          sourcePublisher: f.sourcePublisher || '',
           dateAdopted: f.dateAdopted || '',
+          dateApproved: f.dateApproved || '',
+          datePromulgated: f.datePromulgated || '',
+          datePublished: f.datePublished || '',
           dateForce: f.dateForce || '',
+          lastAmended: f.lastAmended || '',
           field: f.field || '',
-          status: f.status || 'Parsed'
+          status: f.status || 'Parsed',
+          sourceQuality: f.sourceQuality || null,
+          sourceDetails: f.sourceDetails || null,
+          fieldConfidence: f.fieldConfidence || {},
+          fieldProvenance: f.fieldProvenance || {}
         };
       }
 
@@ -3339,11 +3706,45 @@
       }
 
       function applyMetadataDraftToFiche(fiche, draft) {
-        const cleanDraft = draft || createMetadataDraft(fiche);
+        const cleanDraft = { ...(draft || createMetadataDraft(fiche)) };
+        cleanDraft.fullTitle = cleanCanonicalTitle(cleanDraft.fullTitle);
+        cleanDraft.short = firstKnownValue(cleanDraft.short, cleanDraft.fullTitle);
+        cleanDraft.ref = firstKnownValue(cleanDraft.ref, shortHash(cleanDraft.fullTitle || cleanDraft.short || 'imported-source'));
+
+        const provenance = { ...(fiche.fieldProvenance || cleanDraft.fieldProvenance || {}) };
+        [
+          'fullTitle',
+          'short',
+          'ref',
+          'type',
+          'jurisdiction',
+          'body',
+          'promulgatingAuthority',
+          'sourcePublisher',
+          'dateAdopted',
+          'dateApproved',
+          'datePromulgated',
+          'datePublished',
+          'dateForce',
+          'lastAmended',
+          'status',
+          'field'
+        ].forEach(field => {
+          if (String(cleanDraft[field] ?? '') !== String(fiche[field] ?? '')) {
+            provenance[field] = 'user-corrected';
+          } else if (!provenance[field] && firstKnownValue(cleanDraft[field])) {
+            provenance[field] = 'parser';
+          }
+        });
+
         return {
           ...fiche,
           ...cleanDraft,
-          docType: labelForDocumentType(cleanDraft.type || fiche.type || 'unknown')
+          docType: labelForDocumentType(cleanDraft.type || fiche.type || 'unknown'),
+          sourceQuality: cleanDraft.sourceQuality || fiche.sourceQuality || buildSourceQuality(state.currentPipelineResult, fiche),
+          sourceDetails: cleanDraft.sourceDetails || fiche.sourceDetails || buildSourceDetails(state.currentPipelineResult, fiche),
+          fieldProvenance: provenance,
+          fieldConfidence: cleanDraft.fieldConfidence || fiche.fieldConfidence || {}
         };
       }
 
@@ -3470,19 +3871,62 @@
           year: (String(item.date || '').match(/\b\d{4}\b/) || [item.label || 'Date'])[0],
           text: item.description || item.label || item.type || ''
         }));
+        const rawTitle = metadata.title || doc.filename || 'Imported legal document';
+        const type = identity.documentType || doc.type || metadata.documentType || 'unknown';
+        const authority = identity.authority || metadata.authority || metadata.body || metadata.court || metadata.institution || 'Source document';
+        const sourcePublisher = metadata.sourcePublisher || metadata.publisher || metadata.office || '';
+        const adaptedBase = {
+          type,
+          fullTitle: cleanCanonicalTitle(identity.displayTitle || rawTitle),
+          short: identity.shortTitle || metadata.shortTitle || metadata.title || doc.filename || 'Imported',
+          ref: identity.reference || metadata.regulationNumber || metadata.directiveNumber || metadata.caseNumber || metadata.actNumber || doc.id || 'Imported source',
+          jurisdiction: identity.jurisdiction || metadata.jurisdiction || 'Unknown',
+          body: authority,
+          promulgatingAuthority: metadata.promulgatingAuthority || metadata.promulgator || metadata.enactingAuthority || '',
+          sourcePublisher,
+          dateAdopted: identity.date || metadata.adoptionDate || metadata.signatureDate || metadata.decisionDate || 'Unknown',
+          dateApproved: metadata.approvalDate || metadata.popularApprovalDate || '',
+          datePromulgated: metadata.promulgationDate || metadata.enactmentDate || '',
+          datePublished: metadata.publicationDate || metadata.gazetteDate || '',
+          dateForce: metadata.dateForce || metadata.entryIntoForce || metadata.effectiveDate || 'Unknown',
+          lastAmended: metadata.lastAmended || metadata.lastAmendmentDate || '',
+          field: metadata.field || 'Legal source',
+          status: (doc.status && doc.status.label) || 'Parsed'
+        };
+        const sourceDetails = buildSourceDetails(result, adaptedBase);
+        const sourceQuality = buildSourceQuality(result, adaptedBase);
+        const detectorConfidence = result.detection && Number(result.detection.confidence);
+        const identityConfidence = identity.confidence && Number(identity.confidence.identity);
+        const presentConfidence = value => firstKnownValue(value) ? 72 : 35;
+        const fieldConfidence = {
+          type: Number.isFinite(detectorConfidence) ? detectorConfidence : presentConfidence(adaptedBase.type),
+          identity: Number.isFinite(identityConfidence) ? identityConfidence : presentConfidence(adaptedBase.fullTitle),
+          ref: presentConfidence(adaptedBase.ref),
+          body: presentConfidence(adaptedBase.body),
+          jurisdiction: presentConfidence(adaptedBase.jurisdiction),
+          dateAdopted: presentConfidence(adaptedBase.dateAdopted),
+          dateForce: presentConfidence(adaptedBase.dateForce)
+        };
+        const fieldProvenance = {
+          type: 'detector',
+          fullTitle: identity.displayTitle ? 'identity-normalizer' : 'parser-metadata',
+          short: identity.shortTitle ? 'identity-normalizer' : 'parser-metadata',
+          ref: identity.reference ? 'identity-normalizer' : 'parser-metadata',
+          jurisdiction: identity.jurisdiction ? 'identity-normalizer' : 'parser-metadata',
+          body: identity.authority ? 'identity-normalizer' : 'parser-metadata',
+          dateAdopted: identity.date ? 'identity-normalizer' : 'parser-metadata',
+          dateForce: metadata.entryIntoForce || metadata.effectiveDate ? 'parser-metadata' : 'fallback',
+          sourcePublisher: sourcePublisher ? 'parser-metadata' : 'not-detected'
+        };
 
         return {
-          docType: doc.label || metadata.documentTypeLabel || 'Legal Document',
-          type: identity.documentType || doc.type || metadata.documentType || 'unknown',
-          ref: identity.reference || metadata.regulationNumber || metadata.directiveNumber || metadata.caseNumber || metadata.actNumber || doc.id || 'Imported source',
-          fullTitle: identity.displayTitle || metadata.title || doc.filename || 'Imported legal document',
-          short: identity.shortTitle || metadata.shortTitle || metadata.title || doc.filename || 'Imported',
-          jurisdiction: identity.jurisdiction || metadata.jurisdiction || 'Unknown',
-          body: identity.authority || metadata.body || metadata.court || metadata.institution || 'Source document',
-          dateAdopted: identity.date || metadata.adoptionDate || metadata.signatureDate || 'Unknown',
-          dateForce: metadata.dateForce || metadata.entryIntoForce || 'Unknown',
-          field: metadata.field || 'Legal source',
-          status: (doc.status && doc.status.label) || 'Parsed',
+          docType: doc.label || metadata.documentTypeLabel || labelForDocumentType(type),
+          ...adaptedBase,
+          rawTitle,
+          sourceQuality,
+          sourceDetails,
+          fieldConfidence,
+          fieldProvenance,
           amendedBy: ((fiche.amendmentTracker && fiche.amendmentTracker.amendments) || []).map(item => item.heading),
           summary: (fiche.summary && (fiche.summary.full || fiche.summary.short)) || 'ATLAS generated a source-grounded fiche from the uploaded document.',
           provisions: provisions.length ? provisions : [{
@@ -3506,7 +3950,7 @@
           jurisdictions: [{
             code: String(metadata.jurisdiction || 'N/A').slice(0, 3).toUpperCase(),
             name: identity.jurisdiction || metadata.jurisdiction || 'Unknown',
-            authority: identity.authority || metadata.body || metadata.court || 'Not detected',
+            authority: authority || 'Not detected',
             impl: 'Imported source',
             status: (doc.status && doc.status.label) || 'Parsed'
           }],
