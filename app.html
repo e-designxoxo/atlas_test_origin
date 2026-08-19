@@ -1316,6 +1316,36 @@
         font-size: 12px;
       }
 
+      .legal-profile {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .legal-profile-item {
+        border-left: 2px solid rgba(68,127,128,0.35);
+        padding: 4px 8px;
+        min-width: 0;
+      }
+
+      .legal-profile-item span {
+        display: block;
+        color: var(--dimmer);
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .legal-profile-item strong {
+        display: block;
+        margin-top: 4px;
+        color: var(--ink);
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+
       .source-details {
         margin-top: 14px;
         border-top: 1px solid var(--border);
@@ -1395,7 +1425,8 @@
 
       @media (max-width: 768px) {
         .source-quality-strip,
-        .source-details-grid { grid-template-columns: 1fr; }
+        .source-details-grid,
+        .legal-profile { grid-template-columns: 1fr; }
       }
 
       /* Sections */
@@ -3235,6 +3266,31 @@
         `;
       }
 
+      function renderLegalProfile(classification = {}) {
+        const rows = [
+          ['Origin', classification.origin],
+          ['Document family', classification.documentFamily],
+          ['Authority class', classification.authorityClass],
+          ['Binding character', classification.bindingCharacter]
+        ];
+        return `
+          <div class="legal-profile" aria-label="Legal classification profile">
+            ${rows.map(([label, value]) => `
+              <div class="legal-profile-item">
+                <span>${escapeHTML(label)}</span>
+                <strong>${escapeHTML(humanizeClassification(value || 'undetermined'))}</strong>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      function humanizeClassification(value) {
+        return String(value || 'undetermined')
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, letter => letter.toUpperCase());
+      }
+
       function renderSourceDetailsPanel(f) {
         const details = f.sourceDetails || {};
         const rows = [
@@ -3310,6 +3366,7 @@
               </div>
               <h1>${f.fullTitle}</h1>
               ${renderFicheCoreMeta(f)}
+              ${renderLegalProfile(f.classification)}
               ${renderSourceQualityStrip(sourceQuality)}
               ${renderAmendmentSummary(f)}
               ${renderSourceDetailsPanel(f)}
@@ -3893,6 +3950,13 @@
           field: metadata.field || 'Legal source',
           status: (doc.status && doc.status.label) || 'Parsed'
         };
+        const classification = doc.classification || identity.classification || {
+          origin: result.detection?.origin || null,
+          documentFamily: result.detection?.documentFamily || null,
+          authorityClass: result.detection?.authorityClass || null,
+          bindingCharacter: result.detection?.bindingCharacter || null,
+          basis: result.detection?.classificationBasis || 'undetermined'
+        };
         const sourceDetails = buildSourceDetails(result, adaptedBase);
         const sourceQuality = buildSourceQuality(result, adaptedBase);
         const detectorConfidence = result.detection && Number(result.detection.confidence);
@@ -3923,6 +3987,7 @@
           docType: doc.label || metadata.documentTypeLabel || labelForDocumentType(type),
           ...adaptedBase,
           rawTitle,
+          classification,
           sourceQuality,
           sourceDetails,
           fieldConfidence,
