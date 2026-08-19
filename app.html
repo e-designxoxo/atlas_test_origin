@@ -2361,6 +2361,8 @@
           <button class="secondary" type="button" onclick="closeSaveWorkspaceDialog()">Cancel</button>
         </div>
       </div>
+
+    <!-- ==== FORMER CACHE RESET ====   
     </dialog>
 
     <script src="data/pipeline/schema.js?v=20260803-4"></script>
@@ -2378,9 +2380,45 @@
     <script src="data/pipeline/parsers/contract-parser.js?v=20260803-4"></script>
     <script src="data/pipeline/parsers/generic-parser.js?v=20260803-4"></script>
     <script src="data/pipeline/fiche-generator.js?v=20260803-4"></script>
-    <script src="data/pipeline/pipeline.js?v=20260803-4"></script>
+    <script src="data/pipeline/pipeline.js?v=20260803-4"></script>                    -->
+
+
+ </dialog>
+    
+<script>
+  
+      // Static prototype loader: preserve dependency order and avoid stale
+      // GitHub Pages modules without manually editing every script URL.
+      (() => {
+        const buildId = Date.now();
+        const modules = [
+          "data/pipeline/schema.js",
+          "data/pipeline/identifier.js",
+          "data/pipeline/validators.js",
+          "data/pipeline/extractor.js",
+          "data/pipeline/document-detector.js",
+          "data/pipeline/parsers/parser-core.js",
+          "data/pipeline/parsers/constitution-parser.js",
+          "data/pipeline/parsers/regulation-parser.js",
+          "data/pipeline/parsers/directive-parser.js",
+          "data/pipeline/parsers/treaty-parser.js",
+          "data/pipeline/parsers/statute-parser.js",
+          "data/pipeline/parsers/judgment-parser.js",
+          "data/pipeline/parsers/contract-parser.js",
+          "data/pipeline/parsers/generic-parser.js",
+          "data/pipeline/fiche-generator.js",
+          "data/pipeline/pipeline.js"
+        ];
+
+        window.__ATLAS_SCRIPT_ERRORS__ = [];
+        document.write(modules.map(source =>
+          `<script src="${source}?build=${buildId}" onerror="window.__ATLAS_SCRIPT_ERRORS__.push('${source}')"><\/script>`
+        ).join(""));
+      })();
+    </script>
 
     <script>
+      
       // ═══════════════════════════════════════════
       // DATA
       // ═══════════════════════════════════════════
