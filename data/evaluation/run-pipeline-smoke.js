@@ -1,6 +1,8 @@
 const fs = require("fs");
 const path = require("path");
 const pipeline = require("../pipeline/pipeline.js");
+const identifier = require("../pipeline/identifier.js");
+const ficheGenerator = require("../pipeline/fiche-generator.js");
 const cases = require("./cases.js");
 
 function makeExtraction(filename, text) {
@@ -39,8 +41,14 @@ async function runCase(testCase) {
   assertCase(result.identity.fingerprint && result.identity.fingerprint.startsWith("fp-"), `${testCase.id}: expected stable fingerprint`);
   assertCase(result.identity.canonicalId && result.identity.canonicalId.includes(result.identity.fingerprint.slice(0, 10)), `${testCase.id}: expected canonical ID to include fingerprint prefix`);
   assertCase(result.fiche.document.identity && result.fiche.document.identity.canonicalId === result.identity.canonicalId, `${testCase.id}: expected fiche to embed canonical identity`);
+  for (const field of ["origin", "documentFamily", "authorityClass", "bindingCharacter"]) {
+    assertCase(result.detection[field], `${testCase.id}: expected detection.${field}`);
+    assertCase(result.identity.classification[field] === result.detection[field], `${testCase.id}: expected identity ${field} to preserve detection value`);
+    assertCase(result.fiche.document.classification[field] === result.identity.classification[field], `${testCase.id}: expected fiche ${field} to preserve identity value`);
+  }
   assertCase(repeat.identity.fingerprint === result.identity.fingerprint, `${testCase.id}: expected idempotent fingerprint`);
   assertCase(repeat.identity.canonicalId === result.identity.canonicalId, `${testCase.id}: expected idempotent canonical ID`);
+  assertCase(JSON.stringify(repeat.identity.classification) === JSON.stringify(result.identity.classification), `${testCase.id}: expected idempotent classification`);
 
   return {
     id: testCase.id,
@@ -54,8 +62,49 @@ async function runCase(testCase) {
   };
 }
 
+function assertParserClassificationOverride() {
+  const extraction = makeExtraction("administrative-guidance.txt", "Administrative guidance text ".repeat(20));
+  const detection = {
+    type: "regulation",
+    confidence: 92,
+    origin: "administrative",
+    documentFamily: "regulatory-instrument",
+    authorityClass: "primary",
+    bindingCharacter: "binding",
+    classificationBasis: "type-default"
+  };
+  const parserOutput = {
+    documentType: "regulation",
+    filename: extraction.filename,
+    metadata: { title: "Administrative Guidance", jurisdiction: "Test jurisdiction" },
+    classification: {
+      authorityClass: "non-binding-institutional",
+      bindingCharacter: "non-binding"
+    },
+    articles: [],
+    references: [],
+    amendments: [],
+    stats: { totalElements: 0 }
+  };
+  const identity = identifier.buildIdentity({
+    extraction,
+    detection,
+    routing: { parserType: "regulation" },
+    parserOutput
+  });
+  const fiche = ficheGenerator.generate(parserOutput, { detection, identity, filename: extraction.filename });
+
+  assertCase(identity.classification.authorityClass === "non-binding-institutional", "parser override: identity should prefer parser authority class");
+  assertCase(identity.classification.bindingCharacter === "non-binding", "parser override: identity should prefer parser binding character");
+  assertCase(identity.classification.origin === "administrative", "parser override: identity should preserve detection origin fallback");
+  assertCase(identity.classification.basis === "parser-override", "parser override: identity should record parser override basis");
+  assertCase(fiche.document.classification.bindingCharacter === "non-binding", "parser override: fiche should preserve resolved classification");
+}
+
 (async function main() {
   const rows = [];
+
+  assertParserClassificationOverride();
 
   for (const testCase of cases) {
     rows.push(await runCase(testCase));
