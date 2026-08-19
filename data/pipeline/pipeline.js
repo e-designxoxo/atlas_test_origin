@@ -179,12 +179,14 @@
   function enrichWithDimensions(detectionResult) {
     if (!schema || typeof schema.dimensionDefaultsForType !== "function") return detectionResult;
     const dimensions = schema.dimensionDefaultsForType(detectionResult.type);
-    return Object.assign({}, detectionResult, {
-      origin: detectionResult.origin || (dimensions && dimensions.origin) || null,
-      documentFamily: detectionResult.documentFamily || (dimensions && dimensions.documentFamily) || null,
-      authorityClass: detectionResult.authorityClass || (dimensions && dimensions.authorityClass) || null,
-      bindingCharacter: detectionResult.bindingCharacter || (dimensions && dimensions.bindingCharacter) || null
-    });
+    return {
+      ...detectionResult,
+      origin: detectionResult.origin || dimensions.origin || null,
+      documentFamily: detectionResult.documentFamily || dimensions.documentFamily || null,
+      authorityClass: detectionResult.authorityClass || dimensions.authorityClass || null,
+      bindingCharacter: detectionResult.bindingCharacter || dimensions.bindingCharacter || null,
+      classificationBasis: detectionResult.classificationBasis || "type-default"
+    };
   }
 
   function runDetection(extraction, options) {
