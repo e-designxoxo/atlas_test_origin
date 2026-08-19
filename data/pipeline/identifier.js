@@ -48,6 +48,7 @@
     const shortTitle = buildShortTitle({ metadata, displayTitle, authority, date, reference, sourceFilename });
     const canonicalId = buildCanonicalId({ documentType, jurisdiction, authority, date, reference, fingerprint, displayTitle });
     const warnings = buildIdentityWarnings({ displayTitle, documentType, jurisdiction, authority, date, reference, sourceFilename, text });
+    const classification = resolveClassification({ documentType, detection, parserOutput, metadata });
 
     return {
       schemaVersion: SCHEMA?.SCHEMA_VERSIONS?.identity || IDENTITY_VERSION,
@@ -57,6 +58,11 @@
       displayTitle,
       shortTitle,
       documentType,
+      classification,
+      origin: classification.origin,
+      documentFamily: classification.documentFamily,
+      authorityClass: classification.authorityClass,
+      bindingCharacter: classification.bindingCharacter,
       jurisdiction: jurisdiction || "Unknown",
       authority: authority || "Unknown",
       date: date || "Unknown",
@@ -76,6 +82,31 @@
       },
       warnings
     };
+  }
+
+  function resolveClassification(values) {
+    const defaults = SCHEMA?.dimensionDefaultsForType
+      ? SCHEMA.dimensionDefaultsForType(values.documentType)
+      : {};
+    const parserClassification = values.parserOutput.classification || {};
+    const metadata = values.metadata || {};
+    const detection = values.detection || {};
+    const keys = ["origin", "documentFamily", "authorityClass", "bindingCharacter"];
+    const classification = {};
+
+    for (const key of keys) {
+      classification[key] = firstValue(
+        parserClassification[key],
+        metadata[key],
+        detection[key],
+        defaults[key]
+      );
+    }
+
+    classification.basis = Object.keys(parserClassification).some(key => keys.includes(key))
+      ? "parser-override"
+      : detection.classificationBasis || "type-default";
+    return classification;
   }
 
   function buildDisplayTitle(parts) {
