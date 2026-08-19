@@ -6,12 +6,12 @@
  */
 
 (function initAtlasValidators(root, factory) {
-  const validators = factory(root.ATLAS_Schema || null);
-
   if (typeof module !== "undefined" && module.exports && typeof require === "function") {
     module.exports = factory(require("./schema.js"));
+    return;
   }
 
+  const validators = factory(root.ATLAS_Schema || null);
   root.ATLAS_Validators = validators;
   if (root.window) root.window.ATLAS_Validators = validators;
 })(typeof globalThis !== "undefined" ? globalThis : this, function createAtlasValidators(SCHEMA) {
