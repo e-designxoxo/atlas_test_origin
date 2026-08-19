@@ -12,7 +12,7 @@
 
 (function initAtlasFicheGenerator(root, factory) {
   if (typeof module !== "undefined" && module.exports && typeof require === "function") {
-    module.exports = factory(require("./parsers/_core.js"));
+    module.exports = factory(require("./parsers/parser-core.js"));
     return;
   }
 
@@ -55,6 +55,7 @@
     const documentType = parsed.documentType || options.documentType || "unknown";
     const typeMeta = DOCUMENT_TYPE_META[documentType] || DOCUMENT_TYPE_META.unknown;
     const identity = options.identity || null;
+    const classification = resolveClassification(parsed, options, identity, documentType);
     const metadata = enrichMetadata(parsed.metadata || {}, parsed, typeMeta, documentType, { ...options, identity });
     const language = options.language || metadata.language || parsed.stats?.language || "en";
     const warnings = collectWarnings(parsed.warnings, options.warnings);
@@ -75,6 +76,7 @@
         filename: parsed.filename || options.filename || "",
         citation: identity?.displayTitle || formatDocumentCitation(metadata, documentType),
         identity,
+        classification,
         metadata,
         status: determineStatus(metadata, parsed.amendments || [], documentType)
       },
@@ -112,6 +114,36 @@
     return fiche;
   }
 
+  function resolveClassification(parsed, options, identity, documentType) {
+    const parserClassification = parsed.classification || {};
+    const metadata = parsed.metadata || {};
+    const detection = options.detection || {};
+    const identityClassification = identity?.classification || {};
+    const keys = ["origin", "documentFamily", "authorityClass", "bindingCharacter"];
+    const classification = {};
+
+    for (const key of keys) {
+      classification[key] = firstKnown(
+        parserClassification[key],
+        metadata[key],
+        identityClassification[key],
+        detection[key]
+      ) || null;
+    }
+
+    classification.basis = firstKnown(
+      parserClassification.basis,
+      identityClassification.basis,
+      detection.classificationBasis
+    ) || "undetermined";
+    classification.documentType = documentType;
+    return classification;
+  }
+
+  function firstKnown() {
+    return Array.prototype.slice.call(arguments).find(isKnownValue) || null;
+  }
+
   function generateFallbackFiche(text, filename, warnings = []) {
     const cleanTitle = titleFromFilename(filename || "Untitled Document");
     const content = String(text || "");
@@ -125,6 +157,13 @@
         label: DOCUMENT_TYPE_META.unknown.label,
         filename: filename || "",
         citation: cleanTitle,
+        classification: {
+          origin: null,
+          documentFamily: "unclassified",
+          authorityClass: "undetermined",
+          bindingCharacter: "undetermined",
+          basis: "fallback"
+        },
         metadata: { title: cleanTitle, documentType: "unknown" },
         status: {
           status: "unprocessed",
