@@ -37,7 +37,7 @@
   "use strict";
 
   // Version the extractor contract so downstream modules can detect changes.
-  const VERSION = "1.1.0";
+  const VERSION = "1.2.0";
 
   // Browser extraction should stay bounded. Larger files belong to a backend.
   const DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
@@ -164,6 +164,7 @@
       mimeType: fileInfo.mimeType,
       format: FORMAT_BY_EXTENSION[fileInfo.extension],
       extractionMethod: payload.extractionMethod,
+      encoding: payload.encoding || null,
       rawText,
       normalizedText,
       text: normalizedText,
@@ -178,8 +179,17 @@
    * so downstream modules do not depend on one huge wall of text.
    */
   async function extractTXT(file, fileInfo, warnings) {
-    const rawText = await readAsText(file);
+    const decoded = await readAsText(file);
+    const rawText = decoded.text;
     const sourceUnits = textToSourceUnits(rawText, fileInfo);
+
+    if (decoded.encoding !== "utf-8") {
+      warnings.push({
+        code: "TEXT_ENCODING_DETECTED",
+        message: `TXT source decoded as ${decoded.encoding}.`,
+        details: { encoding: decoded.encoding, detection: decoded.detection }
+      });
+    }
 
     if (sourceUnits.length === 0) {
       warnings.push({
@@ -190,6 +200,7 @@
 
     return {
       extractionMethod: "browser-text",
+      encoding: decoded.encoding,
       rawText,
       sourceUnits
     };
@@ -200,7 +211,16 @@
    * often contains nested tables, anchors, classes, and generated metadata.
    */
   async function extractHTML(file, fileInfo, warnings) {
-    const html = await readAsText(file);
+    const decoded = await readAsText(file);
+    const html = decoded.text;
+
+    if (decoded.encoding !== "utf-8") {
+      warnings.push({
+        code: "TEXT_ENCODING_DETECTED",
+        message: `HTML source decoded as ${decoded.encoding}.`,
+        details: { encoding: decoded.encoding, detection: decoded.detection }
+      });
+    }
 
     if (typeof DOMParser === "undefined") {
       throw new Error("HTML extraction requires a browser environment with DOMParser.");
@@ -226,6 +246,7 @@
     if (!body) {
       return {
         extractionMethod: "browser-domparser",
+        encoding: decoded.encoding,
         rawText: "",
         sourceUnits: []
       };
@@ -246,6 +267,7 @@
 
     return {
       extractionMethod: isPdf2Html ? "browser-pdf2html-layout" : "browser-domparser",
+      encoding: decoded.encoding,
       rawText,
       sourceUnits
     };
@@ -565,26 +587,84 @@
   }
 
   /**
-   * Browser path uses FileReader. Node/test path uses Blob.text().
+   * Read bytes before decoding so UTF-16 legal exports are not silently
+   * corrupted by File.text(), whose decoding is always UTF-8.
    */
-  function readAsText(file, encoding = "UTF-8") {
-    if (typeof FileReader === "undefined") {
-      return readBlobTextFallback(file);
+  async function readAsText(file) {
+    const buffer = await readAsArrayBuffer(file);
+    const bytes = new Uint8Array(buffer);
+    const detected = detectTextEncoding(bytes);
+
+    if (typeof TextDecoder === "undefined") {
+      throw new Error("This environment cannot decode uploaded text safely.");
     }
 
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(new Error("Failed to read file as text."));
-      reader.readAsText(file, encoding);
-    });
+    try {
+      const decoder = new TextDecoder(detected.encoding, { fatal: false });
+      return {
+        text: decoder.decode(bytes),
+        encoding: detected.encoding,
+        detection: detected.detection
+      };
+    } catch (error) {
+      throw new Error(`Failed to decode source as ${detected.encoding}: ${error.message}`);
+    }
   }
 
-  async function readBlobTextFallback(file) {
-    if (typeof file.text === "function") {
-      return file.text();
+  async function readAsArrayBuffer(file) {
+    if (typeof file.arrayBuffer === "function") {
+      return file.arrayBuffer();
     }
-    throw new Error("This environment cannot read File/Blob text.");
+
+    if (typeof FileReader !== "undefined") {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("Failed to read file bytes."));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    throw new Error("This environment cannot read File/Blob bytes.");
+  }
+
+  function detectTextEncoding(bytes) {
+    if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+      return { encoding: "utf-8", detection: "bom" };
+    }
+    if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) {
+      return { encoding: "utf-16le", detection: "bom" };
+    }
+    if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) {
+      return { encoding: "utf-16be", detection: "bom" };
+    }
+
+    const sampleLength = Math.min(bytes.length, 4096);
+    let evenNulls = 0;
+    let oddNulls = 0;
+    let evenSlots = 0;
+    let oddSlots = 0;
+
+    for (let index = 0; index < sampleLength; index += 1) {
+      if (index % 2 === 0) {
+        evenSlots += 1;
+        if (bytes[index] === 0) evenNulls += 1;
+      } else {
+        oddSlots += 1;
+        if (bytes[index] === 0) oddNulls += 1;
+      }
+    }
+
+    const evenRatio = evenSlots ? evenNulls / evenSlots : 0;
+    const oddRatio = oddSlots ? oddNulls / oddSlots : 0;
+    if (oddRatio > 0.3 && oddRatio > evenRatio * 2) {
+      return { encoding: "utf-16le", detection: "null-byte-pattern" };
+    }
+    if (evenRatio > 0.3 && evenRatio > oddRatio * 2) {
+      return { encoding: "utf-16be", detection: "null-byte-pattern" };
+    }
+
+    return { encoding: "utf-8", detection: "default" };
   }
 
   /**
@@ -654,6 +734,7 @@
  * @property {string|null} mimeType
  * @property {string} format
  * @property {string} extractionMethod
+ * @property {string|null} encoding
  * @property {string} rawText
  * @property {string} normalizedText
  * @property {string} text
