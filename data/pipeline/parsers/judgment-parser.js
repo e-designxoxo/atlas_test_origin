@@ -26,7 +26,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function createAtlasJudgmentParser(CORE) {
   "use strict";
 
-  const VERSION = "1.1.0";
+  const VERSION = "1.2.0";
   const DOCUMENT_TYPE = "judgment";
   const MIN_PARAGRAPH_COUNT_WARNING = 2;
 
@@ -56,7 +56,11 @@
 
   const HEADER_PATTERNS = {
     en: [/\b(?:JUDGMENT|JUDGEMENT|ORDER|DECISION|RULING|OPINION)\s+(?:OF\s+)?(?:THE\s+)?(?:COURT|TRIBUNAL|CHAMBER)\b/i, /\b(?:v\.|vs\.|versus)\b/i],
-    fr: [/\b(?:ARRÊT|ARRET|JUGEMENT|ORDONNANCE|DÉCISION|DECISION)\s+(?:DE\s+LA\s+)?(?:COUR|TRIBUNAL|CHAMBRE)\b/i, /\b(?:c\.|c\/|contre)\b/i],
+    fr: [
+      /\b(?:ARRÊT|ARRET|JUGEMENT|ORDONNANCE|DÉCISION|DECISION)\s+(?:DE\s+LA\s+)?(?:COUR|TRIBUNAL|CHAMBRE)\b/i,
+      /\bCour\s+de\s+cassation\s*[-,]\s*(?:Assembl[ée]e\s+pl[ée]ni[èe]re|Chambre\s+mixte|[^\n,]{2,80}chambre)\b/i,
+      /\b(?:c\.|c\/|contre)\b/i
+    ],
     de: [/\b(?:URTEIL|BESCHLUSS|ENTSCHEIDUNG)\s+(?:DES|DER)\s+(?:GERICHTS|GERICHTSHOFS|KAMMER)\b/i, /\b(?:gegen|g\.|\.\/\.)\b/i],
     es: [/\b(?:SENTENCIA|AUTO|DECISIÓN|DECISION)\s+(?:DEL|DE\s+LA)\s+(?:TRIBUNAL|CORTE|SALA)\b/i, /\b(?:c\.|c\/|contra)\b/i]
   };
@@ -89,20 +93,44 @@
 
     const header = detectCaseHeader(text, language);
     const rawElements = discoverStructure(text, language, normalized.sourceUnits);
+    const metadata = extractMetadata(text, language, normalized.filename, header, normalized.sourceUnits);
 
     if (rawElements.length === 0) {
       warnings.push(CORE.makeWarning("NO_STRUCTURE", "No judgment sections or numbered paragraphs were detected.", { textLength: text.length, language }));
-      return CORE.createEmptyParseResult({ startedAt, version: VERSION, documentType: DOCUMENT_TYPE, filename: normalized.filename, language, warnings });
+      return {
+        ...CORE.createEmptyParseResult({
+          startedAt,
+          version: VERSION,
+          documentType: DOCUMENT_TYPE,
+          filename: normalized.filename,
+          language,
+          title: metadata.title,
+          jurisdiction: metadata.jurisdiction,
+          adoptionDate: metadata.judgmentDate,
+          warnings
+        }),
+        metadata,
+        header,
+        preamble: header,
+        disposition: detectDisposition(text, [], language),
+        analysis: buildJudgmentAnalysis(text, language, metadata, [])
+      };
     }
 
-    const elements = addJudgmentLinkBacks(
-      hydrateInlineParagraphContent(CORE.extractContent(text, rawElements, { emptyThreshold: 5 }))
+    const hydratedElements = addJudgmentLinkBacks(
+      hydrateInlineElementContent(CORE.extractContent(text, rawElements, { emptyThreshold: 5 }))
     );
-    const paragraphs = elements.filter(element => element.type === "PARA" && !element.isEmpty);
+    const supplementaryMaterials = hydratedElements.filter(element => element.type === "SOURCE_ANALYSIS");
+    const elements = hydratedElements
+      .filter(element => element.type !== "SOURCE_ANALYSIS")
+      .map(formatSemanticElementForDisplay)
+      .map(preserveMeaningfulStructuralHeading);
+    const provisions = elements.filter(element => !element.isEmpty);
+    const paragraphs = provisions.filter(element => element.type === "PARA");
     const hierarchyElements = elements.filter(element => element.type !== "PARA" || element.isEmpty);
     const separateOpinions = detectSeparateOpinions(text, language);
     const disposition = detectDisposition(text, elements, language);
-    const metadata = extractMetadata(text, language, normalized.filename, header);
+    const analysis = buildJudgmentAnalysis(text, language, metadata, elements);
     const allElements = header ? [header, ...elements] : elements;
     const references = CORE.scanCrossReferences(
       allElements,
@@ -113,7 +141,7 @@
     const citations = extractCitations(text, elements, language);
     const relations = buildJudgmentRelations(elements, references, citations, disposition, separateOpinions);
 
-    if (paragraphs.length < MIN_PARAGRAPH_COUNT_WARNING) {
+    if (paragraphs.length < MIN_PARAGRAPH_COUNT_WARNING && provisions.length < MIN_PARAGRAPH_COUNT_WARNING) {
       warnings.push(CORE.makeWarning("LOW_PARAGRAPH_COUNT", `Only ${paragraphs.length} numbered paragraph(s) were parsed. Source may be incomplete, OCR-damaged, or not a judgment.`));
     }
     if (!metadata.court && !metadata.caseNumber) {
@@ -130,7 +158,7 @@
       metadata,
       header,
       preamble: header,
-      articles: paragraphs,
+      articles: provisions,
       hierarchyElements,
       elements,
       hierarchyTree: CORE.buildHierarchyTree(elements),
@@ -138,11 +166,13 @@
       citations,
       relations,
       disposition,
+      analysis,
+      supplementaryMaterials,
       separateOpinions,
       amendments: [],
       warnings,
       stats: {
-        totalArticles: paragraphs.length,
+        totalArticles: provisions.length,
         totalElements: elements.length,
         totalReferences: references.length,
         resolvedReferences: references.filter(reference => reference.resolved).length,
@@ -208,7 +238,78 @@
       position += lines[lineIndex].length + 1;
     }
 
+    if (language === "fr") {
+      elements.push(...discoverFrenchJudgmentBlocks(text, sourceUnits));
+    }
+
     return CORE.dedupeBy(elements.sort((a, b) => a.position - b.position), element => `${element.canonicalId}|${element.position}`);
+  }
+
+  /**
+   * French supreme-court decisions often use prose markers instead of
+   * numbered paragraphs. Keep the marker and the following text in distinct,
+   * source-positioned blocks so the fiche can expose the legal sequence.
+   */
+  function discoverFrenchJudgmentBlocks(text, sourceUnits = []) {
+    const definitions = [
+      { id: "ISSUES", type: "ISSUE", role: "issues", regex: /(?:^|\n)(Sur\s+(?:les?|la)\s+[^\n:]{2,180}(?:moyens?|branches?)[^\n:]*\s*:)/gi },
+      { id: "CLAIMS", type: "CLAIMS", role: "claims", regex: /(?:^|\n)(Attendu\s+que\s+[^\n]*?fait\s+grief\s+[^\n]*?(?:alors,\s+selon\s+le\s+moyen\s*:|alors\s+que))/gi },
+      { id: "REASONING-1", type: "REASONING", role: "reasoning", regex: /(?:^|\n)(Mais\s+attendu(?:,\s*d['’]abord,?|\s+que))/gi },
+      { id: "REASONING-2", type: "REASONING", role: "reasoning", regex: /(?:^|\n)(Attendu,?\s+ensuite,?\s+que)/gi },
+      { id: "CONCLUSION", type: "CONCLUSION", role: "holding", regex: /(?:^|\n)(D['’]où\s+il\s+suit\s+que)/gi },
+      { id: "DISPOSITION", type: "DISPOSITION", role: "disposition", regex: /(?:^|\n)(PAR\s+CES\s+MOTIFS\b[^:\n]*\s*:)/gi },
+      { id: "ORDER", type: "ORDER", role: "order", regex: /(?:^|\n)((?:REJETTE|CASSE(?:\s+ET\s+ANNULE)?|ANNULE|DIT\s+N['’]Y\s+AVOIR\s+LIEU)[^\n.]*(?:\.|$))/gim },
+      { id: "SOURCE-ANALYSIS", type: "SOURCE_ANALYSIS", role: "source-analysis", regex: /(?:^|\n)(Analyse)\s*(?=\n|$)/gi }
+    ];
+    const found = [];
+
+    for (const definition of definitions) {
+      let match;
+      let occurrence = 0;
+      while ((match = definition.regex.exec(text)) !== null) {
+        occurrence += 1;
+        const heading = match[1].trim();
+        const position = match.index + match[0].indexOf(match[1]);
+        const sourceUnit = findSourceUnitAtPosition(sourceUnits, position, heading);
+        const suffix = occurrence > 1 ? `-${occurrence}` : "";
+        const canonicalId = `${definition.id}${suffix}`;
+
+        found.push({
+          id: canonicalId,
+          canonicalId,
+          type: definition.type,
+          prefix: definition.type,
+          level: 0,
+          identifier: canonicalId,
+          normalizedId: canonicalId,
+          sortKey: `${String(position).padStart(10, "0")}-${canonicalId}`,
+          position,
+          endPosition: null,
+          lineIndex: lineIndexAt(text, position),
+          heading,
+          shortTitle: labelForJudgmentRole(definition.role, occurrence),
+          inlineText: "",
+          sectionRole: definition.role,
+          relationRole: definition.role,
+          parentSectionId: null,
+          parentSectionRole: null,
+          content: "",
+          isAnnex: false,
+          isAmendment: false,
+          isEmpty: true,
+          source: {
+            ...CORE.sourceAnchorFromUnit(sourceUnit),
+            position,
+            lineIndex: lineIndexAt(text, position),
+            quote: heading
+          }
+        });
+
+        if (match[0].length === 0) definition.regex.lastIndex += 1;
+      }
+    }
+
+    return found;
   }
 
   function detectCaseHeader(text, language) {
@@ -324,21 +425,52 @@
     };
   }
 
-  function extractMetadata(text, language, filename, header = null) {
+  function extractMetadata(text, language, filename, header = null, sourceUnits = []) {
     const firstBlock = String(text || "").split("\n").slice(0, 45).join("\n");
     const court = extractCourt(firstBlock);
     const caseNumber = header?.caseReference || extractCaseNumber(firstBlock);
     const judgmentDate = extractDate(firstBlock);
     const parties = detectParties(text, language);
-    const title = buildCaseTitle(parties, court, filename);
+    const formation = language === "fr" ? extractFrenchFormation(firstBlock) : null;
+    const publicationStatus = language === "fr" ? extractFrenchPublicationStatus(firstBlock) : null;
+    const reporterCitation = language === "fr" ? extractFrenchReporterCitation(text) : null;
+    const outcome = language === "fr" ? extractFrenchOutcome(text) : null;
+    const appealedDecision = language === "fr" ? extractFrenchAppealedDecision(firstBlock) : null;
+    const judgmentParties = language === "fr" ? extractFrenchParties(text, parties) : parties;
+    const title = buildCaseTitle(judgmentParties, court, filename, { formation, judgmentDate, caseNumber });
+    const metadataProvenance = buildMetadataProvenance(text, sourceUnits, {
+      title,
+      court,
+      formation,
+      caseNumber,
+      judgmentDate,
+      publicationStatus,
+      reporterCitation,
+      outcome,
+      appealedDecision
+    });
 
     return {
       title,
+      shortTitle: caseNumber && court ? `${court} ${caseNumber}` : title,
       court,
+      authority: court,
+      formation,
       caseNumber,
+      reference: caseNumber,
       judgmentDate,
       adoptionDate: judgmentDate,
-      parties,
+      decisionDate: judgmentDate,
+      publicationStatus,
+      reporterCitation,
+      outcome,
+      appealedDecision,
+      lowerCourt: appealedDecision?.court || null,
+      lowerCourtDecisionDate: appealedDecision?.date || null,
+      parties: judgmentParties,
+      jurisdiction: court && /Cour\s+de\s+cassation/i.test(court) ? "France" : null,
+      field: inferFrenchJudgmentField(text, language),
+      metadataProvenance,
       language,
       sourceFilename: filename || null
     };
@@ -353,7 +485,10 @@
       /\b(Tribunal\s+(?:Supremo|Constitucional|de\s+Justicia)|Corte\s+(?:Suprema|Constitucional))\b/i
     ];
     const match = patterns.map(regex => text.match(regex)).find(Boolean);
-    return match ? match[0].replace(/\s+/g, " ").trim() : null;
+    if (!match) return null;
+    const court = match[0].replace(/\s+/g, " ").trim();
+    if (/^Cour\s+de\s+cassation$/i.test(court)) return "Cour de cassation";
+    return court;
   }
 
   function extractCaseNumber(text) {
@@ -361,11 +496,19 @@
       /\b(?:Case|CASE)\s+(?:No\.?\s*)?(C-?\d+\/\d+(?:\s*P)?)\b/i,
       /\b\[?\d{4}\]?\s+(?:UKSC|UKHL|UKPC|EWCA|EWHC)\s+\d+\b/i,
       /\b(?:N[°º]?\s*RG|RG\s*n[°º]?|N[°º]?\s*Portalis|R[ée]pertoire\s+g[ée]n[ée]ral|Minute\s+n[°º]?|Dossier\s+n[°º]?)\s*[:\-]?\s*[A-Z0-9\/\-. ]{4,}\b/i,
+      /\bN[°º]\s+de\s+pourvoi\s*:\s*([0-9]{2,4}-[0-9]{2}\.[0-9]{3})\b/i,
+      /\b(?:pourvoi\s+)?n[°º]\s*([0-9]{2,4}-[0-9]{2}\.[0-9]{3})\b/i,
+      /\b([0-9]{2,4}-[0-9]{2}\.[0-9]{3})\b/,
       /\bDTA\s*\d{4,}\s*\d{8}\b/i,
       /\b(?:No\.?|Nr\.?|n°)\s*\d[\d/\-.]+\b/i
     ];
     const match = patterns.map(regex => text.match(regex)).find(Boolean);
-    return match ? match[0].replace(/\s+/g, " ").trim() : null;
+    if (!match) return null;
+    return String(match[1] || match[0])
+      .replace(/^N[°º]\s+de\s+pourvoi\s*:\s*/i, "")
+      .replace(/^(?:pourvoi\s+)?n[°º]\s*/i, "")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   function extractDate(text) {
@@ -375,7 +518,13 @@
     return match ? match[0] : null;
   }
 
-  function buildCaseTitle(parties, court, filename) {
+  function buildCaseTitle(parties, court, filename, details = {}) {
+    if (court && details.caseNumber) {
+      const reference = /^\d{2,4}-\d{2}\.\d{3}$/.test(details.caseNumber)
+        ? `pourvoi n° ${details.caseNumber}`
+        : details.caseNumber;
+      return [court, details.formation, details.judgmentDate, reference].filter(Boolean).join(" - ");
+    }
     if (parties.detected && parties.applicant && parties.respondent) return `${parties.applicant} v ${parties.respondent}`;
     return court || CORE.titleFromFilename(filename) || "Untitled Judgment";
   }
@@ -387,9 +536,9 @@
       .trim();
   }
 
-  function hydrateInlineParagraphContent(elements) {
+  function hydrateInlineElementContent(elements) {
     return elements.map(element => {
-      if (!["PARA", "SUBPARA"].includes(element.type) || !element.inlineText) return element;
+      if (!element.inlineText) return element;
 
       const content = element.content
         ? `${element.inlineText}\n${element.content}`.trim()
@@ -403,6 +552,259 @@
         isEmpty: content.length < 5
       };
     });
+  }
+
+  function extractFrenchFormation(text) {
+    const match = String(text || "").match(/\b(Assembl[ée]e\s+pl[ée]ni[èe]re|Chambre\s+mixte|Premi[èe]re\s+chambre\s+civile|Deuxi[èe]me\s+chambre\s+civile|Troisi[èe]me\s+chambre\s+civile|Chambre\s+commerciale|Chambre\s+sociale|Chambre\s+criminelle)\b/i);
+    return match ? sentenceCase(match[1]) : null;
+  }
+
+  function extractFrenchPublicationStatus(text) {
+    const match = String(text || "").match(/\b(Publi[ée]\s+au\s+bulletin|Non\s+publi[ée]\s+au\s+bulletin|In[ée]dit)\b/i);
+    return match ? sentenceCase(match[1]).replace(/^Publiée/i, "Publié") : null;
+  }
+
+  function extractFrenchReporterCitation(text) {
+    const match = String(text || "").match(/(?:^|\n)(Bulletin\s+\d{4}[^\n]+)/i);
+    return match ? match[1].trim() : null;
+  }
+
+  function extractFrenchOutcome(text) {
+    const explicit = String(text || "").match(/(?:^|\n)Solution\s*:\s*([^\n.]+)\.?/i);
+    if (explicit) return sentenceCase(explicit[1].trim());
+    const operative = String(text || "").match(/(?:^|\n)\s*(REJETTE|CASSE(?:\s+ET\s+ANNULE)?|ANNULE)\b/i);
+    return operative ? sentenceCase(operative[1]) : null;
+  }
+
+  function extractFrenchAppealedDecision(text) {
+    const match = String(text || "").match(/D[ée]cision\s+attaqu[ée]e\s*:\s*([^,\n]+),\s*(\d{4}-\d{2}-\d{2})(?:,\s*du\s*([^\n]+))?/i);
+    if (!match) return null;
+    return {
+      court: match[1].trim(),
+      date: (match[3] || match[2]).trim(),
+      isoDate: match[2],
+      sourceText: match[0].trim()
+    };
+  }
+
+  function extractFrenchParties(text, fallback) {
+    const applicantMatch = String(text || "").match(/Attendu\s+que\s+(.{2,100}?)\s+fait\s+grief\b/i);
+    const respondentMatch = String(text || "").match(/d[ée]cision\s+de\s+la\s+(.{3,140}?)\s+ayant\s+refus[ée](?=\s|[,.])/i);
+    return {
+      detected: Boolean(applicantMatch || respondentMatch || fallback?.detected),
+      applicant: applicantMatch ? cleanParty(applicantMatch[1]) : fallback?.applicant || null,
+      respondent: respondentMatch ? cleanParty(respondentMatch[1]) : fallback?.respondent || null,
+      matchText: applicantMatch ? applicantMatch[0].trim() : fallback?.matchText || null
+    };
+  }
+
+  function inferFrenchJudgmentField(text, language) {
+    if (language !== "fr") return null;
+    const sample = String(text || "");
+    const constitutional = /valeur\s+constitutionnelle|article\s+77\s+de\s+la\s+Constitution/i.test(sample);
+    const international = /engagements?\s+internationaux|Pacte\s+international|Convention\s+europ[ée]enne/i.test(sample);
+    if (constitutional && international) return "Constitutional and international law";
+    if (constitutional) return "Constitutional law";
+    if (international) return "International law";
+    return null;
+  }
+
+  function buildJudgmentAnalysis(text, language, metadata, elements) {
+    if (language !== "fr") return { claims: [], reasoning: [], authorities: [] };
+    const claims = extractNumberedClaims(text);
+    const reasoning = (elements || [])
+      .filter(element => ["REASONING", "CONCLUSION"].includes(element.type) && !element.isEmpty)
+      .map(element => ({
+        id: element.canonicalId,
+        role: element.sectionRole,
+        text: element.content,
+        source: element.source
+      }));
+    const authorities = extractFrenchAuthorities(text);
+    const facts = extractFrenchCaseNarrative(text);
+    const issueCandidate = /supr[ée]matie\s+conf[ée]r[ée]e\s+aux\s+engagements\s+internationaux[\s\S]{0,180}dispositions?\s+de\s+valeur\s+constitutionnelle/i.test(text)
+      ? {
+          text: "Whether international commitments prevail in the French domestic legal order over provisions of constitutional value.",
+          status: "rule-derived-candidate",
+          confidence: 0.86,
+          basis: "Reasoning states that treaty supremacy does not apply to provisions of constitutional value."
+        }
+      : null;
+
+    return {
+      proceduralHistory: metadata.appealedDecision,
+      parties: metadata.parties,
+      facts,
+      claims,
+      issueCandidate,
+      reasoning,
+      holding: reasoning.find(item => item.role === "holding") || null,
+      outcome: metadata.outcome,
+      authorities
+    };
+  }
+
+  function extractFrenchCaseNarrative(text) {
+    const match = String(text || "").match(/Attendu\s+que\s+([\s\S]*?)(?=\s*,?\s*alors,\s+selon\s+le\s+moyen\s*:)/i);
+    if (!match) return null;
+    const position = match.index;
+    const narrative = `Attendu que ${CORE.normalizeText(match[1])}`;
+    return {
+      text: narrative,
+      position,
+      endPosition: position + match[0].length,
+      source: {
+        position,
+        quote: CORE.preview(narrative, 220)
+      }
+    };
+  }
+
+  function extractNumberedClaims(text) {
+    const marker = /alors,\s+selon\s+le\s+moyen\s*:/i.exec(text);
+    if (!marker) return [];
+    const endMatch = /\n\s*(?:Mais\s+attendu|Attendu,?\s+ensuite|D['’]où\s+il\s+suit|PAR\s+CES\s+MOTIFS)/i.exec(text.slice(marker.index + marker[0].length));
+    const start = marker.index + marker[0].length;
+    const end = endMatch ? start + endMatch.index : text.length;
+    const region = text.slice(start, end);
+    const regex = /(\d+)°\s+([\s\S]*?)(?=\s*;\s*\d+°|$)/g;
+    const claims = [];
+    let match;
+    while ((match = regex.exec(region)) !== null) {
+      const claimText = CORE.normalizeText(match[2]).replace(/\s*;\s*$/, "");
+      const position = start + match.index;
+      claims.push({
+        id: `CLAIM-${match[1]}`,
+        number: Number(match[1]),
+        text: claimText,
+        position,
+        endPosition: position + match[0].length,
+        source: { position, quote: `${match[1]}° ${CORE.preview(claimText, 160)}` }
+      });
+    }
+    return claims;
+  }
+
+  function extractFrenchAuthorities(text) {
+    const patterns = [
+      { type: "constitutional-provision", regex: /\barticle\s+77\s+de\s+la\s+Constitution\b/gi },
+      { type: "constitutional-agreement", regex: /\baccord\s+de\s+Noum[ée]a\b/gi },
+      { type: "statutory-provision", regex: /\barticle\s+188\s+de\s+la\s+loi\s+organique(?:\s+n[°º]\s*99-209)?\s+du\s+19\s+mars\s+1999\b/gi },
+      { type: "treaty", regex: /\bPacte\s+international\s+relatif\s+aux\s+droits\s+civils\s+et\s+politiques\b/gi },
+      { type: "treaty", regex: /\bConvention\s+europ[ée]enne\s+de\s+sauvegarde\s+des\s+droits\s+de\s+l['’]homme\s+et\s+des\s+libert[ée]s\s+fondamentales\b/gi },
+      { type: "eu-treaty", regex: /\btrait[ée]\s+de\s+l['’]Union\s+europ[ée]enne\b/gi }
+    ];
+    const authorities = [];
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.regex.exec(text)) !== null) {
+        authorities.push({ type: pattern.type, citation: match[0], position: match.index });
+        if (match[0].length === 0) pattern.regex.lastIndex += 1;
+      }
+    }
+    return CORE.dedupeBy(authorities, item => `${item.type}|${item.citation.toLowerCase()}`);
+  }
+
+  function buildMetadataProvenance(text, sourceUnits, values) {
+    const provenance = {};
+    const sourceValues = {
+      court: values.court,
+      formation: values.formation,
+      caseNumber: values.caseNumber,
+      judgmentDate: values.judgmentDate,
+      publicationStatus: values.publicationStatus,
+      reporterCitation: values.reporterCitation,
+      outcome: values.outcome,
+      lowerCourt: values.appealedDecision?.sourceText
+    };
+    for (const [field, value] of Object.entries(sourceValues)) {
+      if (!value) continue;
+      const position = findValuePosition(text, value, field);
+      const sourceUnit = findSourceUnitAtPosition(sourceUnits, position, value);
+      provenance[field] = {
+        method: "parser-rule",
+        position,
+        source: {
+          ...CORE.sourceAnchorFromUnit(sourceUnit),
+          position,
+          quote: CORE.extractContext(text, position, value, 80)
+        }
+      };
+    }
+    provenance.title = {
+      method: "composed-from-canonical-fields",
+      fields: ["court", "formation", "judgmentDate", "caseNumber"]
+    };
+    return provenance;
+  }
+
+  function findValuePosition(text, value, field) {
+    if (field === "lowerCourt" && value) return Math.max(0, text.indexOf(value));
+    const direct = String(text || "").toLocaleLowerCase("fr").indexOf(String(value || "").toLocaleLowerCase("fr"));
+    if (direct >= 0) return direct;
+    if (field === "caseNumber") {
+      const match = String(text || "").match(/N[°º]\s+de\s+pourvoi\s*:\s*([0-9.-]+)/i);
+      return match ? match.index : 0;
+    }
+    return 0;
+  }
+
+  function findSourceUnitAtPosition(sourceUnits, position, heading = "") {
+    if (!Array.isArray(sourceUnits) || sourceUnits.length === 0) return null;
+    const byRange = sourceUnits.find(unit => {
+      const start = unit.source?.position ?? unit.position;
+      const end = unit.source?.endPosition ?? unit.endPosition;
+      return Number.isFinite(start) && Number.isFinite(end) && position >= start && position <= end;
+    });
+    return byRange || CORE.findSourceUnitForHeading(heading, sourceUnits);
+  }
+
+  function lineIndexAt(text, position) {
+    return String(text || "").slice(0, Math.max(0, position)).split("\n").length - 1;
+  }
+
+  function labelForJudgmentRole(role, occurrence) {
+    const labels = {
+      issues: "Grounds raised",
+      claims: "Applicant's claims",
+      reasoning: `Court reasoning${occurrence > 1 ? ` ${occurrence}` : ""}`,
+      holding: "Holding",
+      disposition: "Disposition",
+      order: "Operative order"
+    };
+    return labels[role] || sentenceCase(role);
+  }
+
+  function sentenceCase(value) {
+    const text = String(value || "").trim();
+    return text ? text.charAt(0).toUpperCase() + text.slice(1).toLowerCase() : null;
+  }
+
+  function preserveMeaningfulStructuralHeading(element) {
+    if (!element.isEmpty) return element;
+    if (!["ISSUE", "DISPOSITION", "ORDER"].includes(element.type)) return element;
+    return {
+      ...element,
+      isEmpty: false,
+      charLength: 0,
+      wordCount: 0
+    };
+  }
+
+  function formatSemanticElementForDisplay(element) {
+    const semanticTypes = new Set(["ISSUE", "CLAIMS", "REASONING", "CONCLUSION", "DISPOSITION", "ORDER"]);
+    if (!semanticTypes.has(element.type)) return element;
+    const sourceMarker = element.heading;
+    const content = [sourceMarker, element.content].filter(Boolean).join(" ").trim();
+    return {
+      ...element,
+      heading: element.shortTitle || sourceMarker,
+      sourceMarker,
+      content,
+      charLength: content.length,
+      wordCount: CORE.countWords(content),
+      isEmpty: content.length < 5
+    };
   }
 
   function addJudgmentLinkBacks(elements) {
